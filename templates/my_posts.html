@@ -1,0 +1,601 @@
+{% extends 'base.html' %}
+
+{% block title %}My Posts - BlogSphere{% endblock %}
+
+{% block extra_css %}
+<style>
+    .posts-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem 0;
+        margin-bottom: 2rem;
+    }
+    
+    .stats-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+        border-left: 4px solid #667eea;
+    }
+    
+    .stats-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .stat-item {
+        text-align: center;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+    }
+    
+    .stat-number {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #667eea;
+    }
+    
+    .stat-label {
+        color: #6c757d;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .posts-grid {
+        display: grid;
+        gap: 1.5rem;
+    }
+    
+    .post-card {
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+        border: 1px solid #e9ecef;
+    }
+    
+    .post-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+    
+    .post-image {
+        width: 100%;
+        height: 200px;
+        object-fit: cover;
+        background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+    }
+    
+    .post-content {
+        padding: 1.5rem;
+    }
+    
+    .post-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: #212529;
+        line-height: 1.4;
+    }
+    
+    .post-excerpt {
+        color: #6c757d;
+        margin-bottom: 1rem;
+        line-height: 1.5;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    
+    .post-meta {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+    }
+    
+    .post-status {
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .status-published {
+        background: #d4edda;
+        color: #155724;
+    }
+    
+    .status-draft {
+        background: #fff3cd;
+        color: #856404;
+    }
+    
+    .status-archived {
+        background: #f8d7da;
+        color: #721c24;
+    }
+    
+    .post-date {
+        color: #6c757d;
+        font-size: 0.85rem;
+    }
+    
+    .post-views {
+        color: #6c757d;
+        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    
+    .post-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    
+    .btn-sm {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.8rem;
+        border-radius: 6px;
+    }
+    
+    .filter-section {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        margin-bottom: 2rem;
+    }
+    
+    .filter-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        align-items: end;
+    }
+    
+    .no-posts {
+        text-align: center;
+        padding: 3rem;
+        color: #6c757d;
+    }
+    
+    .no-posts-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+    
+    .pagination-wrapper {
+        display: flex;
+        justify-content: center;
+        margin-top: 2rem;
+    }
+    
+    @media (max-width: 768px) {
+        .posts-header {
+            padding: 1.5rem 0;
+        }
+        
+        .stats-row {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .filter-row {
+            grid-template-columns: 1fr;
+        }
+        
+        .post-meta {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+        
+        .post-actions {
+            justify-content: flex-start;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Posts Header -->
+<div class="posts-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <nav aria-label="breadcrumb" class="mb-2">
+                    <ol class="breadcrumb" style="background: transparent; padding: 0; margin: 0;">
+                        <li class="breadcrumb-item">
+                            <a href="/posts/dashboard/" style="color: rgba(255,255,255,0.8);">Dashboard</a>
+                        </li>
+                        <li class="breadcrumb-item active" style="color: white;">My Posts</li>
+                    </ol>
+                </nav>
+                <h1 class="h2 mb-1">
+                    <i class="bi bi-file-text-fill me-2"></i>
+                    My Posts
+                </h1>
+                <p class="mb-0 opacity-75">Manage your blog posts and track their performance</p>
+            </div>
+            <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                <a href="/posts/create/" class="btn btn-light me-2">
+                    <i class="bi bi-plus-circle me-1"></i>New Post
+                </a>
+                <a href="/posts/dashboard/" class="btn btn-outline-light">
+                    <i class="bi bi-speedometer2 me-1"></i>Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <!-- Django Messages -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Statistics -->
+    <div class="stats-card">
+        <div class="stats-row">
+            <div class="stat-item">
+                <div class="stat-number">{{ total_posts }}</div>
+                <div class="stat-label">Total Posts</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">{{ published_posts }}</div>
+                <div class="stat-label">Published</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">{{ draft_posts }}</div>
+                <div class="stat-label">Drafts</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">{{ total_views }}</div>
+                <div class="stat-label">Total Views</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-section">
+        <form method="get" class="filter-form">
+            <div class="filter-row">
+                <div>
+                    <label for="status" class="form-label">Status</label>
+                    <select name="status" id="status" class="form-select">
+                        <option value="">All Status</option>
+                        <option value="published" {% if request.GET.status == 'published' %}selected{% endif %}>Published</option>
+                        <option value="draft" {% if request.GET.status == 'draft' %}selected{% endif %}>Draft</option>
+                        <option value="archived" {% if request.GET.status == 'archived' %}selected{% endif %}>Archived</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="category" class="form-label">Category</label>
+                    <select name="category" id="category" class="form-select">
+                        <option value="">All Categories</option>
+                        {% for value, display in categories %}
+                            <option value="{{ value }}" {% if request.GET.category == value %}selected{% endif %}>
+                                {{ display }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="search" class="form-label">Search</label>
+                    <input type="text" name="search" id="search" class="form-control" 
+                           placeholder="Search posts..." value="{{ request.GET.search }}">
+                </div>
+                <div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-search me-1"></i>Filter
+                    </button>
+                    {% if request.GET %}
+                        <a href="/posts/my-posts/" class="btn btn-outline-secondary ms-2">
+                            <i class="bi bi-x-circle me-1"></i>Clear
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Posts Grid -->
+    {% if posts %}
+        <div class="posts-grid">
+            {% for post in posts %}
+                <div class="post-card">
+                    {% if post.featured_image %}
+                        <img src="{{ post.featured_image.url }}" alt="{{ post.title }}" class="post-image">
+                    {% else %}
+                        <div class="post-image d-flex align-items-center justify-content-center">
+                            <i class="bi bi-image text-muted" style="font-size: 3rem;"></i>
+                        </div>
+                    {% endif %}
+                    
+                    <div class="post-content">
+                        <h3 class="post-title">{{ post.title }}</h3>
+                        
+                        {% if post.excerpt %}
+                            <p class="post-excerpt">{{ post.excerpt }}</p>
+                        {% else %}
+                            <p class="post-excerpt">{{ post.content|truncatewords:25 }}</p>
+                        {% endif %}
+                        
+                        <div class="post-meta">
+                            <span class="post-status status-{{ post.status }}">
+                                {% if post.status == 'published' %}
+                                    <i class="bi bi-check-circle me-1"></i>Published
+                                {% elif post.status == 'draft' %}
+                                    <i class="bi bi-pencil me-1"></i>Draft
+                                {% elif post.status == 'archived' %}
+                                    <i class="bi bi-archive me-1"></i>Archived
+                                {% endif %}
+                            </span>
+                            
+                            <span class="post-date">
+                                <i class="bi bi-calendar me-1"></i>
+                                {{ post.created_at|date:"M d, Y" }}
+                            </span>
+                            
+                            <span class="post-views">
+                                <i class="bi bi-eye me-1"></i>
+                                {{ post.views }} views
+                            </span>
+                            
+                            {% if post.category %}
+                                <span class="badge bg-secondary">{{ post.get_category_display }}</span>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="post-actions">
+                            <a href="/posts/{{ post.slug }}/" class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-eye me-1"></i>View
+                            </a>
+                            <a href="/posts/edit/{{ post.id }}/" class="btn btn-outline-success btn-sm">
+                                <i class="bi bi-pencil me-1"></i>Edit
+                            </a>
+                            {% if post.status == 'draft' %}
+                                <form method="post" action="/posts/edit/{{ post.id }}/" style="display: inline;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="publish">
+                                    <button type="submit" class="btn btn-success btn-sm">
+                                        <i class="bi bi-send me-1"></i>Publish
+                                    </button>
+                                </form>
+                            {% elif post.status == 'published' %}
+                                <form method="post" action="/posts/edit/{{ post.id }}/" style="display: inline;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="unpublish">
+                                    <button type="submit" class="btn btn-warning btn-sm">
+                                        <i class="bi bi-pause me-1"></i>Unpublish
+                                    </button>
+                                </form>
+                            {% endif %}
+                            <button type="button" class="btn btn-outline-danger btn-sm" 
+                                    onclick="confirmDelete('{{ post.title }}', '{{ post.id }}')">
+                                <i class="bi bi-trash me-1"></i>Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if is_paginated %}
+            <div class="pagination-wrapper">
+                <nav aria-label="Posts pagination">
+                    <ul class="pagination">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?{% if request.GET.urlencode %}{{ request.GET.urlencode }}&{% endif %}page=1">
+                                    <i class="bi bi-chevron-double-left"></i>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?{% if request.GET.urlencode %}{{ request.GET.urlencode }}&{% endif %}page={{ page_obj.previous_page_number }}">
+                                    <i class="bi bi-chevron-left"></i>
+                                </a>
+                            </li>
+                        {% endif %}
+
+                        {% for num in page_obj.paginator.page_range %}
+                            {% if page_obj.number == num %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ num }}</span>
+                                </li>
+                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?{% if request.GET.urlencode %}{{ request.GET.urlencode }}&{% endif %}page={{ num }}">{{ num }}</a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?{% if request.GET.urlencode %}{{ request.GET.urlencode }}&{% endif %}page={{ page_obj.next_page_number }}">
+                                    <i class="bi bi-chevron-right"></i>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?{% if request.GET.urlencode %}{{ request.GET.urlencode }}&{% endif %}page={{ page_obj.paginator.num_pages }}">
+                                    <i class="bi bi-chevron-double-right"></i>
+                                </a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="no-posts">
+            <div class="no-posts-icon">
+                <i class="bi bi-file-text"></i>
+            </div>
+            <h3>No Posts Found</h3>
+            {% if request.GET %}
+                <p>No posts match your current filters. Try adjusting your search criteria.</p>
+                <a href="/posts/my-posts/" class="btn btn-outline-primary">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Clear Filters
+                </a>
+            {% else %}
+                <p>You haven't created any posts yet. Start sharing your thoughts with the world!</p>
+                <a href="/posts/create/" class="btn btn-primary">
+                    <i class="bi bi-plus-circle me-1"></i>Create Your First Post
+                </a>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title" id="deleteModalLabel">
+                    <i class="bi bi-exclamation-triangle text-danger me-2"></i>
+                    Confirm Deletion
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the post "<strong id="deletePostTitle"></strong>"?</p>
+                <p class="text-muted small">This action cannot be undone. The post and all its associated data will be permanently removed.</p>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" action="" id="deleteForm" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-1"></i>Delete Post
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Delete confirmation
+function confirmDelete(title, postId) {
+    document.getElementById('deletePostTitle').textContent = title;
+    document.getElementById('deleteForm').action = `/posts/delete/${postId}/`;
+    
+    const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    deleteModal.show();
+}
+
+// Auto-submit filter form on change
+document.getElementById('status').addEventListener('change', function() {
+    if (this.value !== '') {
+        this.form.submit();
+    }
+});
+
+document.getElementById('category').addEventListener('change', function() {
+    if (this.value !== '') {
+        this.form.submit();
+    }
+});
+
+// Search form enhancement
+let searchTimeout;
+document.getElementById('search').addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        if (this.value.length >= 3 || this.value.length === 0) {
+            this.form.submit();
+        }
+    }, 500);
+});
+
+// Auto-dismiss alerts
+setTimeout(function() {
+    const alerts = document.querySelectorAll('.alert');
+    alerts.forEach(alert => {
+        const bsAlert = new bootstrap.Alert(alert);
+        bsAlert.close();
+    });
+}, 5000);
+
+// Enhance status change forms
+document.querySelectorAll('form[action*="/posts/edit/"]').forEach(form => {
+    form.addEventListener('submit', function(e) {
+        const action = this.querySelector('input[name="action"]').value;
+        const button = this.querySelector('button[type="submit"]');
+        
+        button.disabled = true;
+        button.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i>Processing...';
+        
+        // Re-enable button after 3 seconds in case of error
+        setTimeout(() => {
+            button.disabled = false;
+            if (action === 'publish') {
+                button.innerHTML = '<i class="bi bi-send me-1"></i>Publish';
+            } else {
+                button.innerHTML = '<i class="bi bi-pause me-1"></i>Unpublish';
+            }
+        }, 3000);
+    });
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    // Ctrl+N or Cmd+N for new post
+    if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+        e.preventDefault();
+        window.location.href = '/posts/create/';
+    }
+    
+    // Escape to clear search
+    if (e.key === 'Escape') {
+        const searchInput = document.getElementById('search');
+        if (searchInput.value) {
+            searchInput.value = '';
+            searchInput.form.submit();
+        }
+    }
+});
+
+// Lazy loading for post images
+const imageObserver = new IntersectionObserver((entries, observer) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            const img = entry.target;
+            if (img.dataset.src) {
+                img.src = img.dataset.src;
+                img.classList.remove('lazy');
+                observer.unobserve(img);
+            }
+        }
+    });
+});
+
+document.querySelectorAll('img.lazy').forEach(img => {
+    imageObserver.observe(img);
+});
+</script>
+{% endblock %}

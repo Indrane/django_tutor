@@ -1,0 +1,548 @@
+{% extends 'base.html' %}
+
+{% block title %}Create New Post - BlogSphere{% endblock %}
+
+{% block extra_css %}
+<style>
+    .create-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem 0;
+        margin-bottom: 2rem;
+    }
+    
+    .form-section {
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+    }
+    
+    .section-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+        color: #212529;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        border-bottom: 2px solid #f8f9fa;
+        padding-bottom: 0.5rem;
+    }
+    
+    .form-floating label {
+        color: #6c757d;
+    }
+    
+    .form-control:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+    
+    .content-editor {
+        min-height: 300px;
+        resize: vertical;
+    }
+    
+    .upload-area {
+        border: 2px dashed #dee2e6;
+        border-radius: 8px;
+        padding: 3rem 2rem;
+        text-align: center;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        background: #f8f9fa;
+    }
+    
+    .upload-area:hover {
+        border-color: #667eea;
+        background-color: #f0f2ff;
+    }
+    
+    .upload-area.dragover {
+        border-color: #667eea;
+        background-color: #e3f2fd;
+    }
+    
+    .preview-image {
+        max-width: 100%;
+        max-height: 200px;
+        border-radius: 8px;
+        margin-top: 1rem;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        padding: 0.75rem 2rem;
+        border-radius: 8px;
+        font-weight: 500;
+    }
+    
+    .btn-primary:hover {
+        background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+        transform: translateY(-1px);
+    }
+    
+    .status-options {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .status-option {
+        padding: 1rem;
+        border: 2px solid #dee2e6;
+        border-radius: 8px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .status-option:hover {
+        border-color: #667eea;
+        background-color: #f0f2ff;
+    }
+    
+    .status-option.selected {
+        border-color: #667eea;
+        background-color: #e3f2fd;
+    }
+    
+    .status-option input[type="radio"] {
+        display: none;
+    }
+    
+    .tag-input {
+        position: relative;
+    }
+    
+    .tag-suggestions {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #dee2e6;
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+    }
+    
+    .tag-suggestion {
+        padding: 0.5rem 1rem;
+        cursor: pointer;
+        border-bottom: 1px solid #f8f9fa;
+    }
+    
+    .tag-suggestion:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .character-count {
+        font-size: 0.85rem;
+        color: #6c757d;
+        text-align: right;
+        margin-top: 0.25rem;
+    }
+    
+    .character-count.warning {
+        color: #ffc107;
+    }
+    
+    .character-count.danger {
+        color: #dc3545;
+    }
+    
+    @media (max-width: 768px) {
+        .create-header {
+            padding: 1.5rem 0;
+        }
+        
+        .form-section {
+            padding: 1.5rem;
+        }
+        
+        .upload-area {
+            padding: 2rem 1rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Create Post Header -->
+<div class="create-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <nav aria-label="breadcrumb" class="mb-2">
+                    <ol class="breadcrumb" style="background: transparent; padding: 0; margin: 0;">
+                        <li class="breadcrumb-item">
+                            <a href="{% if current_user.is_admin %}/posts/admin-dashboard/{% else %}/posts/dashboard/{% endif %}" 
+                               style="color: rgba(255,255,255,0.8);">Dashboard</a>
+                        </li>
+                        <li class="breadcrumb-item active" style="color: white;">Create Post</li>
+                    </ol>
+                </nav>
+                <h1 class="h2 mb-1">
+                    <i class="bi bi-plus-circle-fill me-2"></i>
+                    Create New Post
+                </h1>
+                <p class="mb-0 opacity-75">Share your thoughts and ideas with the world</p>
+            </div>
+            <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                <a href="{% if current_user.is_admin %}/posts/admin-posts/{% else %}/posts/my-posts/{% endif %}" 
+                   class="btn btn-light me-2">
+                    <i class="bi bi-arrow-left me-1"></i>Back to Posts
+                </a>
+                <a href="/posts/dashboard/" class="btn btn-outline-light">
+                    <i class="bi bi-speedometer2 me-1"></i>Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <!-- Django Messages -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" id="postForm">
+        {% csrf_token %}
+        
+        <!-- Basic Information -->
+        <div class="form-section">
+            <h3 class="section-title">
+                <i class="bi bi-file-text text-primary"></i>
+                Basic Information
+            </h3>
+            
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="form-floating mb-3">
+                        <input type="text" class="form-control" id="title" name="title" 
+                               value="{{ title }}" required maxlength="200">
+                        <label for="title">Post Title *</label>
+                        <div class="character-count" id="titleCount">0/200</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-floating mb-3">
+                        <select class="form-select" id="category" name="category">
+                            <option value="">Select Category</option>
+                            {% for value, display in categories %}
+                                <option value="{{ value }}" {% if category == value %}selected{% endif %}>
+                                    {{ display }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <label for="category">Category</label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-floating mb-3">
+                <textarea class="form-control" id="excerpt" name="excerpt" 
+                          style="height: 100px;" maxlength="300">{{ excerpt }}</textarea>
+                <label for="excerpt">Excerpt (Brief description)</label>
+                <div class="character-count" id="excerptCount">0/300</div>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="form-section">
+            <h3 class="section-title">
+                <i class="bi bi-pencil-square text-success"></i>
+                Content
+            </h3>
+            
+            <div class="form-floating mb-3">
+                <textarea class="form-control content-editor" id="content" name="content" required>{{ content }}</textarea>
+                <label for="content">Post Content *</label>
+                <div class="form-text">Write your post content. Minimum 50 characters required.</div>
+            </div>
+        </div>
+
+        <!-- Featured Image -->
+        <div class="form-section">
+            <h3 class="section-title">
+                <i class="bi bi-image text-info"></i>
+                Featured Image
+            </h3>
+            
+            <div class="upload-area" id="uploadArea" onclick="document.getElementById('featured_image').click();">
+                <i class="bi bi-cloud-upload fs-1 text-muted mb-3"></i>
+                <h5>Click to upload or drag and drop</h5>
+                <p class="text-muted mb-0">JPEG, PNG, or GIF (max 5MB)</p>
+                <input type="file" id="featured_image" name="featured_image" accept="image/*" style="display: none;">
+            </div>
+            <div id="imagePreview"></div>
+        </div>
+
+        <!-- Tags and Settings -->
+        <div class="form-section">
+            <h3 class="section-title">
+                <i class="bi bi-tags text-warning"></i>
+                Tags & Settings
+            </h3>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-floating mb-3 tag-input">
+                        <input type="text" class="form-control" id="tags" name="tags" 
+                               value="{{ tags }}" placeholder="e.g., technology, web, programming">
+                        <label for="tags">Tags (comma-separated)</label>
+                        <div class="form-text">Separate tags with commas for better discoverability</div>
+                        <div class="tag-suggestions" id="tagSuggestions"></div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    {% if current_user.is_admin %}
+                    <div class="form-check form-switch mb-3" style="margin-top: 1rem;">
+                        <input class="form-check-input" type="checkbox" id="is_featured" name="is_featured" 
+                               {% if is_featured %}checked{% endif %}>
+                        <label class="form-check-label" for="is_featured">
+                            <i class="bi bi-star-fill text-warning me-1"></i>
+                            Feature this post
+                        </label>
+                        <div class="form-text">Featured posts appear prominently on the homepage</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Publishing Options -->
+        <div class="form-section">
+            <h3 class="section-title">
+                <i class="bi bi-send text-purple"></i>
+                Publishing Options
+            </h3>
+            
+            <div class="status-options">
+                {% for value, display in status_choices %}
+                    <label class="status-option {% if status == value or not status and value == 'draft' %}selected{% endif %}">
+                        <input type="radio" name="status" value="{{ value }}" 
+                               {% if status == value or not status and value == 'draft' %}checked{% endif %}>
+                        <div>
+                            {% if value == 'draft' %}
+                                <i class="bi bi-pencil-square fs-4 text-secondary mb-2"></i>
+                                <h6>Save as Draft</h6>
+                                <small class="text-muted">Continue working on it later</small>
+                            {% elif value == 'published' %}
+                                <i class="bi bi-check-circle fs-4 text-success mb-2"></i>
+                                <h6>Publish Now</h6>
+                                <small class="text-muted">Make it visible to everyone</small>
+                            {% elif value == 'archived' %}
+                                <i class="bi bi-archive fs-4 text-warning mb-2"></i>
+                                <h6>Archive</h6>
+                                <small class="text-muted">Hide from public view</small>
+                            {% endif %}
+                        </div>
+                    </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="form-section">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="d-flex gap-3">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle me-1"></i>Create Post
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="saveDraft()">
+                            <i class="bi bi-save me-1"></i>Save Draft
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-6 text-md-end mt-3 mt-md-0">
+                    <button type="button" class="btn btn-outline-danger" onclick="resetForm()">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Reset Form
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Character counters
+function updateCharCount(inputId, countId, maxLength) {
+    const input = document.getElementById(inputId);
+    const counter = document.getElementById(countId);
+    
+    input.addEventListener('input', function() {
+        const length = this.value.length;
+        counter.textContent = `${length}/${maxLength}`;
+        
+        counter.classList.remove('warning', 'danger');
+        if (length > maxLength * 0.8) {
+            counter.classList.add('warning');
+        }
+        if (length > maxLength * 0.95) {
+            counter.classList.add('danger');
+        }
+    });
+    
+    // Trigger initial count
+    input.dispatchEvent(new Event('input'));
+}
+
+updateCharCount('title', 'titleCount', 200);
+updateCharCount('excerpt', 'excerptCount', 300);
+
+// Image upload handling
+document.getElementById('featured_image').addEventListener('change', function() {
+    const file = this.files[0];
+    const preview = document.getElementById('imagePreview');
+    
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            preview.innerHTML = `
+                <img src="${e.target.result}" alt="Preview" class="preview-image">
+                <div class="mt-2">
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeImage()">
+                        <i class="bi bi-trash"></i> Remove Image
+                    </button>
+                </div>
+            `;
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+function removeImage() {
+    document.getElementById('featured_image').value = '';
+    document.getElementById('imagePreview').innerHTML = '';
+}
+
+// Drag and drop for image upload
+const uploadArea = document.getElementById('uploadArea');
+
+uploadArea.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    uploadArea.classList.add('dragover');
+});
+
+uploadArea.addEventListener('dragleave', function(e) {
+    e.preventDefault();
+    uploadArea.classList.remove('dragover');
+});
+
+uploadArea.addEventListener('drop', function(e) {
+    e.preventDefault();
+    uploadArea.classList.remove('dragover');
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+        document.getElementById('featured_image').files = files;
+        document.getElementById('featured_image').dispatchEvent(new Event('change'));
+    }
+});
+
+// Status option selection
+document.querySelectorAll('.status-option').forEach(option => {
+    option.addEventListener('click', function() {
+        document.querySelectorAll('.status-option').forEach(opt => opt.classList.remove('selected'));
+        this.classList.add('selected');
+        this.querySelector('input[type="radio"]').checked = true;
+    });
+});
+
+// Save draft function
+function saveDraft() {
+    document.querySelector('input[name="status"][value="draft"]').checked = true;
+    document.getElementById('postForm').submit();
+}
+
+// Reset form function
+function resetForm() {
+    if (confirm('Are you sure you want to reset the form? All unsaved changes will be lost.')) {
+        document.getElementById('postForm').reset();
+        document.getElementById('imagePreview').innerHTML = '';
+        updateCharCount('title', 'titleCount', 200);
+        updateCharCount('excerpt', 'excerptCount', 300);
+    }
+}
+
+// Auto-save functionality (optional)
+let autoSaveTimer;
+function autoSave() {
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer = setTimeout(() => {
+        const formData = new FormData(document.getElementById('postForm'));
+        formData.set('status', 'draft');
+        
+        // Could implement AJAX auto-save here
+        console.log('Auto-saving draft...');
+    }, 30000); // Auto-save every 30 seconds
+}
+
+// Trigger auto-save on content changes
+document.getElementById('content').addEventListener('input', autoSave);
+document.getElementById('title').addEventListener('input', autoSave);
+
+// Auto-dismiss alerts
+setTimeout(function() {
+    $('.alert').alert('close');
+}, 5000);
+
+// Tag suggestions (placeholder)
+const commonTags = ['technology', 'web', 'programming', 'design', 'tutorial', 'tips', 'business', 'lifestyle'];
+const tagInput = document.getElementById('tags');
+const tagSuggestions = document.getElementById('tagSuggestions');
+
+tagInput.addEventListener('input', function() {
+    const value = this.value.toLowerCase();
+    const lastTag = value.split(',').pop().trim();
+    
+    if (lastTag.length > 0) {
+        const matches = commonTags.filter(tag => tag.includes(lastTag));
+        if (matches.length > 0) {
+            tagSuggestions.innerHTML = matches.map(tag => 
+                `<div class="tag-suggestion" onclick="addTag('${tag}')">${tag}</div>`
+            ).join('');
+            tagSuggestions.style.display = 'block';
+        } else {
+            tagSuggestions.style.display = 'none';
+        }
+    } else {
+        tagSuggestions.style.display = 'none';
+    }
+});
+
+function addTag(tag) {
+    const tagInput = document.getElementById('tags');
+    const tags = tagInput.value.split(',').map(t => t.trim()).filter(t => t);
+    tags[tags.length - 1] = tag;
+    tagInput.value = tags.join(', ') + ', ';
+    document.getElementById('tagSuggestions').style.display = 'none';
+    tagInput.focus();
+}
+
+// Hide suggestions when clicking outside
+document.addEventListener('click', function(e) {
+    if (!tagInput.contains(e.target) && !tagSuggestions.contains(e.target)) {
+        tagSuggestions.style.display = 'none';
+    }
+});
+</script>
+{% endblock %}

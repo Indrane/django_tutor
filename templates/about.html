@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block title %}About Us - Blog Application{% endblock %}
+
+{% block page_header %}
+<div class="text-center py-4">
+    <h1 class="display-4">About Our Blog</h1>
+    <p class="lead">Learn more about our platform and mission</p>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body">
+                <h3 class="card-title">Our Mission</h3>
+                <p class="card-text">
+                    We are dedicated to providing a platform where talented writers can share their thoughts, 
+                    experiences, and knowledge with the world. Our blog application is built with Django and 
+                    focuses on delivering high-quality content in a user-friendly interface.
+                </p>
+                
+                <h3 class="card-title mt-4">What We Offer</h3>
+                <div class="row">
+                    <div class="col-md-6">
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item"><i class="bi bi-check-circle text-success"></i> Quality Content</li>
+                            <li class="list-group-item"><i class="bi bi-check-circle text-success"></i> Expert Authors</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item"><i class="bi bi-check-circle text-success"></i> Easy Navigation</li>
+                            <li class="list-group-item"><i class="bi bi-check-circle text-success"></i> Search Functionality</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

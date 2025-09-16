@@ -1,0 +1,744 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ post.title }} - BlogSphere{% endblock %}
+
+{% block extra_css %}
+<style>
+    .post-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 3rem 0;
+        margin-bottom: 2rem;
+    }
+    
+    .post-container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    
+    .post-meta-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+    }
+    
+    .post-status {
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .status-published {
+        background: rgba(255,255,255,0.2);
+        color: white;
+    }
+    
+    .status-draft {
+        background: rgba(255,193,7,0.3);
+        color: #fff;
+    }
+    
+    .status-archived {
+        background: rgba(220,53,69,0.3);
+        color: #fff;
+    }
+    
+    .post-date {
+        color: rgba(255,255,255,0.8);
+        font-size: 0.9rem;
+    }
+    
+    .post-views {
+        color: rgba(255,255,255,0.8);
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    
+    .post-title {
+        font-size: 2.5rem;
+        font-weight: 700;
+        line-height: 1.2;
+        margin: 0;
+    }
+    
+    .post-content-wrapper {
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+    }
+    
+    .post-featured-image {
+        width: 100%;
+        height: 400px;
+        object-fit: cover;
+        background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+    }
+    
+    .post-content {
+        padding: 2rem;
+    }
+    
+    .post-excerpt {
+        font-size: 1.2rem;
+        color: #6c757d;
+        font-style: italic;
+        margin-bottom: 2rem;
+        padding-bottom: 2rem;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .post-body {
+        font-size: 1.1rem;
+        line-height: 1.8;
+        color: #333;
+    }
+    
+    .post-body h1,
+    .post-body h2,
+    .post-body h3,
+    .post-body h4,
+    .post-body h5,
+    .post-body h6 {
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+        color: #212529;
+    }
+    
+    .post-body p {
+        margin-bottom: 1.5rem;
+    }
+    
+    .post-body blockquote {
+        border-left: 4px solid #667eea;
+        padding-left: 1.5rem;
+        margin: 2rem 0;
+        font-style: italic;
+        color: #6c757d;
+    }
+    
+    .post-body code {
+        background: #f8f9fa;
+        padding: 0.2rem 0.4rem;
+        border-radius: 4px;
+        font-size: 0.9em;
+    }
+    
+    .post-body pre {
+        background: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 8px;
+        overflow-x: auto;
+        margin: 2rem 0;
+    }
+    
+    .post-sidebar {
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+        position: sticky;
+        top: 2rem;
+    }
+    
+    .sidebar-section {
+        margin-bottom: 2rem;
+    }
+    
+    .sidebar-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: #212529;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .author-info {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .author-avatar {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        font-size: 1.2rem;
+    }
+    
+    .author-details h6 {
+        margin: 0;
+        color: #212529;
+    }
+    
+    .author-details small {
+        color: #6c757d;
+    }
+    
+    .post-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    
+    .tag-badge {
+        background: #e9ecef;
+        color: #495057;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        text-decoration: none;
+        transition: all 0.3s ease;
+    }
+    
+    .tag-badge:hover {
+        background: #667eea;
+        color: white;
+        text-decoration: none;
+    }
+    
+    .post-actions {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+    
+    .share-buttons {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 1rem;
+    }
+    
+    .share-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        color: white;
+        font-size: 1.1rem;
+        transition: transform 0.3s ease;
+    }
+    
+    .share-btn:hover {
+        transform: translateY(-2px);
+        color: white;
+        text-decoration: none;
+    }
+    
+    .share-twitter { background: #1da1f2; }
+    .share-facebook { background: #3b5998; }
+    .share-linkedin { background: #0077b5; }
+    .share-email { background: #6c757d; }
+    
+    .reading-time {
+        color: #6c757d;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    
+    .navigation-links {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+    }
+    
+    .nav-link-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        border-radius: 8px;
+        text-decoration: none;
+        color: #212529;
+        transition: all 0.3s ease;
+        border: 1px solid #e9ecef;
+    }
+    
+    .nav-link-item:hover {
+        background: #f8f9fa;
+        border-color: #667eea;
+        color: #212529;
+        text-decoration: none;
+    }
+    
+    .nav-link-content {
+        flex: 1;
+    }
+    
+    .nav-link-label {
+        font-size: 0.8rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .nav-link-title {
+        font-weight: 500;
+        margin: 0;
+    }
+    
+    @media (max-width: 768px) {
+        .post-header {
+            padding: 2rem 0;
+        }
+        
+        .post-title {
+            font-size: 2rem;
+        }
+        
+        .post-content {
+            padding: 1.5rem;
+        }
+        
+        .post-sidebar {
+            position: static;
+            margin-top: 2rem;
+        }
+        
+        .action-buttons {
+            justify-content: center;
+        }
+        
+        .post-meta-header {
+            justify-content: center;
+            text-align: center;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Post Header -->
+<div class="post-header">
+    <div class="container">
+        <div class="post-container">
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb" style="background: transparent; padding: 0; margin: 0;">
+                    <li class="breadcrumb-item">
+                        <a href="/" style="color: rgba(255,255,255,0.8);">Home</a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a href="/posts/" style="color: rgba(255,255,255,0.8);">Posts</a>
+                    </li>
+                    {% if post.category %}
+                        <li class="breadcrumb-item">
+                            <a href="/posts/category/{{ post.category }}/" style="color: rgba(255,255,255,0.8);">
+                                {{ post.get_category_display }}
+                            </a>
+                        </li>
+                    {% endif %}
+                    <li class="breadcrumb-item active" style="color: white;">{{ post.title|truncatechars:30 }}</li>
+                </ol>
+            </nav>
+            
+            <div class="post-meta-header">
+                <span class="post-status status-{{ post.status }}">
+                    {% if post.status == 'published' %}
+                        <i class="bi bi-check-circle me-1"></i>Published
+                    {% elif post.status == 'draft' %}
+                        <i class="bi bi-pencil me-1"></i>Draft
+                    {% elif post.status == 'archived' %}
+                        <i class="bi bi-archive me-1"></i>Archived
+                    {% endif %}
+                </span>
+                
+                <span class="post-date">
+                    <i class="bi bi-calendar me-1"></i>
+                    {{ post.published_at|date:"F d, Y" }}
+                </span>
+                
+                <span class="post-views">
+                    <i class="bi bi-eye me-1"></i>
+                    {{ post.views }} views
+                </span>
+                
+                <span class="reading-time">
+                    <i class="bi bi-clock me-1"></i>
+                    {{ reading_time }} min read
+                </span>
+            </div>
+            
+            <h1 class="post-title">{{ post.title }}</h1>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <!-- Django Messages -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            <div class="post-content-wrapper">
+                {% if post.featured_image %}
+                    <img src="{{ post.featured_image.url }}" alt="{{ post.title }}" class="post-featured-image">
+                {% endif %}
+                
+                <div class="post-content">
+                    {% if post.excerpt %}
+                        <div class="post-excerpt">{{ post.excerpt }}</div>
+                    {% endif %}
+                    
+                    <div class="post-body">
+                        {{ post.content|linebreaks }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Post Actions -->
+            {% if user_can_edit %}
+                <div class="post-actions">
+                    <h5 class="mb-3">
+                        <i class="bi bi-tools me-2"></i>
+                        Post Management
+                    </h5>
+                    <div class="action-buttons">
+                        <a href="/posts/edit/{{ post.id }}/" class="btn btn-primary">
+                            <i class="bi bi-pencil me-1"></i>Edit Post
+                        </a>
+                        {% if post.status == 'draft' %}
+                            <form method="post" action="/posts/edit/{{ post.id }}/" style="display: inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="publish">
+                                <button type="submit" class="btn btn-success">
+                                    <i class="bi bi-send me-1"></i>Publish Now
+                                </button>
+                            </form>
+                        {% elif post.status == 'published' %}
+                            <form method="post" action="/posts/edit/{{ post.id }}/" style="display: inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="unpublish">
+                                <button type="submit" class="btn btn-warning">
+                                    <i class="bi bi-pause me-1"></i>Unpublish
+                                </button>
+                            </form>
+                        {% endif %}
+                        <button type="button" class="btn btn-outline-danger" 
+                                onclick="confirmDelete('{{ post.title }}', '{{ post.id }}')">
+                            <i class="bi bi-trash me-1"></i>Delete
+                        </button>
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Navigation Links -->
+            {% if prev_post or next_post %}
+                <div class="navigation-links">
+                    <h5 class="mb-3">
+                        <i class="bi bi-arrow-left-right me-2"></i>
+                        More Posts
+                    </h5>
+                    <div class="row">
+                        {% if prev_post %}
+                            <div class="col-md-6 mb-3">
+                                <a href="/posts/{{ prev_post.slug }}/" class="nav-link-item">
+                                    <i class="bi bi-chevron-left fs-4 text-primary"></i>
+                                    <div class="nav-link-content">
+                                        <div class="nav-link-label">Previous Post</div>
+                                        <h6 class="nav-link-title">{{ prev_post.title|truncatechars:50 }}</h6>
+                                    </div>
+                                </a>
+                            </div>
+                        {% endif %}
+                        {% if next_post %}
+                            <div class="col-md-6 mb-3">
+                                <a href="/posts/{{ next_post.slug }}/" class="nav-link-item">
+                                    <div class="nav-link-content text-end">
+                                        <div class="nav-link-label">Next Post</div>
+                                        <h6 class="nav-link-title">{{ next_post.title|truncatechars:50 }}</h6>
+                                    </div>
+                                    <i class="bi bi-chevron-right fs-4 text-primary"></i>
+                                </a>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Author Info -->
+            <div class="post-sidebar">
+                <div class="sidebar-section">
+                    <h5 class="sidebar-title">
+                        <i class="bi bi-person-circle text-primary"></i>
+                        Author
+                    </h5>
+                    <div class="author-info">
+                        <div class="author-avatar">
+                            {{ post.author.first_name.0|default:post.author.username.0 }}{{ post.author.last_name.0|default:"" }}
+                        </div>
+                        <div class="author-details">
+                            <h6>{{ post.author.get_full_name|default:post.author.username }}</h6>
+                            <small>{{ post.author.role|capfirst }}</small>
+                        </div>
+                    </div>
+                    {% if post.author.email %}
+                        <a href="mailto:{{ post.author.email }}" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-envelope me-1"></i>Contact Author
+                        </a>
+                    {% endif %}
+                </div>
+
+                <!-- Post Info -->
+                <div class="sidebar-section">
+                    <h5 class="sidebar-title">
+                        <i class="bi bi-info-circle text-info"></i>
+                        Post Details
+                    </h5>
+                    <div class="mb-2">
+                        <strong>Published:</strong> {{ post.published_at|date:"F d, Y" }}
+                    </div>
+                    {% if post.updated_at != post.created_at %}
+                        <div class="mb-2">
+                            <strong>Updated:</strong> {{ post.updated_at|date:"F d, Y" }}
+                        </div>
+                    {% endif %}
+                    <div class="mb-2">
+                        <strong>Views:</strong> {{ post.views }}
+                    </div>
+                    <div class="mb-2">
+                        <strong>Reading Time:</strong> {{ reading_time }} minutes
+                    </div>
+                    {% if post.category %}
+                        <div class="mb-2">
+                            <strong>Category:</strong> {{ post.get_category_display }}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Tags -->
+                {% if post.tags %}
+                    <div class="sidebar-section">
+                        <h5 class="sidebar-title">
+                            <i class="bi bi-tags text-warning"></i>
+                            Tags
+                        </h5>
+                        <div class="post-tags">
+                            {% for tag in post.get_tags %}
+                                <a href="/posts/tag/{{ tag|slugify }}/" class="tag-badge">{{ tag }}</a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- Share -->
+                <div class="sidebar-section">
+                    <h5 class="sidebar-title">
+                        <i class="bi bi-share text-success"></i>
+                        Share This Post
+                    </h5>
+                    <div class="share-buttons">
+                        <a href="https://twitter.com/intent/tweet?url={{ request.build_absolute_uri }}&text={{ post.title }}" 
+                           target="_blank" class="share-btn share-twitter" title="Share on Twitter">
+                            <i class="bi bi-twitter"></i>
+                        </a>
+                        <a href="https://www.facebook.com/sharer/sharer.php?u={{ request.build_absolute_uri }}" 
+                           target="_blank" class="share-btn share-facebook" title="Share on Facebook">
+                            <i class="bi bi-facebook"></i>
+                        </a>
+                        <a href="https://www.linkedin.com/sharing/share-offsite/?url={{ request.build_absolute_uri }}" 
+                           target="_blank" class="share-btn share-linkedin" title="Share on LinkedIn">
+                            <i class="bi bi-linkedin"></i>
+                        </a>
+                        <a href="mailto:?subject={{ post.title }}&body=Check out this post: {{ request.build_absolute_uri }}" 
+                           class="share-btn share-email" title="Share via Email">
+                            <i class="bi bi-envelope"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+{% if user_can_edit %}
+    <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title" id="deleteModalLabel">
+                        <i class="bi bi-exclamation-triangle text-danger me-2"></i>
+                        Confirm Deletion
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete this post?</p>
+                    <p class="text-muted small">This action cannot be undone. The post and all its associated data will be permanently removed.</p>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <form method="post" action="/posts/delete/{{ post.id }}/" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-trash me-1"></i>Delete Post
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Delete confirmation
+function confirmDelete(title, postId) {
+    const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    deleteModal.show();
+}
+
+// Copy link functionality
+function copyLink() {
+    navigator.clipboard.writeText(window.location.href).then(function() {
+        // Show success message
+        const toast = `
+            <div class="toast-container position-fixed top-0 end-0 p-3">
+                <div class="toast show" role="alert">
+                    <div class="toast-header">
+                        <i class="bi bi-check-circle text-success me-2"></i>
+                        <strong class="me-auto">Success</strong>
+                        <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+                    </div>
+                    <div class="toast-body">
+                        Link copied to clipboard!
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', toast);
+        
+        setTimeout(() => {
+            document.querySelector('.toast-container').remove();
+        }, 3000);
+    });
+}
+
+// Reading progress indicator
+function updateReadingProgress() {
+    const article = document.querySelector('.post-body');
+    const scrollTop = window.pageYOffset;
+    const docHeight = document.body.scrollHeight - window.innerHeight;
+    const scrollPercent = (scrollTop / docHeight) * 100;
+    
+    // Create progress bar if it doesn't exist
+    let progressBar = document.getElementById('reading-progress');
+    if (!progressBar) {
+        progressBar = document.createElement('div');
+        progressBar.id = 'reading-progress';
+        progressBar.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: ${scrollPercent}%;
+            height: 3px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            z-index: 9999;
+            transition: width 0.3s ease;
+        `;
+        document.body.appendChild(progressBar);
+    } else {
+        progressBar.style.width = scrollPercent + '%';
+    }
+}
+
+// Add scroll listener for reading progress
+window.addEventListener('scroll', updateReadingProgress);
+
+// Auto-dismiss alerts
+setTimeout(function() {
+    const alerts = document.querySelectorAll('.alert');
+    alerts.forEach(alert => {
+        const bsAlert = new bootstrap.Alert(alert);
+        bsAlert.close();
+    });
+}, 5000);
+
+// Enhance action form submissions
+document.querySelectorAll('form[action*="/posts/edit/"]').forEach(form => {
+    form.addEventListener('submit', function(e) {
+        const button = this.querySelector('button[type="submit"]');
+        button.disabled = true;
+        button.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i>Processing...';
+    });
+});
+
+// Smooth scrolling for anchor links
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+            target.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+        }
+    });
+});
+
+// Print functionality
+function printPost() {
+    window.print();
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    // Ctrl+P or Cmd+P for print
+    if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+        e.preventDefault();
+        printPost();
+    }
+    
+    // Escape to go back
+    if (e.key === 'Escape') {
+        history.back();
+    }
+});
+</script>
+{% endblock %}

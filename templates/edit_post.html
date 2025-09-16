@@ -1,0 +1,827 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Post - {{ post.title }} - BlogSphere{% endblock %}
+
+{% block extra_css %}
+<style>
+    .edit-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem 0;
+        margin-bottom: 2rem;
+    }
+    
+    .form-section {
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+    }
+    
+    .section-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+        color: #212529;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        border-bottom: 2px solid #f8f9fa;
+        padding-bottom: 0.5rem;
+    }
+    
+    .form-floating label {
+        color: #6c757d;
+    }
+    
+    .form-control:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+    
+    .content-editor {
+        min-height: 300px;
+        resize: vertical;
+    }
+    
+    .current-image {
+        max-width: 100%;
+        max-height: 200px;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+    }
+    
+    .upload-area {
+        border: 2px dashed #dee2e6;
+        border-radius: 8px;
+        padding: 3rem 2rem;
+        text-align: center;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        background: #f8f9fa;
+    }
+    
+    .upload-area:hover {
+        border-color: #667eea;
+        background-color: #f0f2ff;
+    }
+    
+    .upload-area.dragover {
+        border-color: #667eea;
+        background-color: #e3f2fd;
+    }
+    
+    .preview-image {
+        max-width: 100%;
+        max-height: 200px;
+        border-radius: 8px;
+        margin-top: 1rem;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        padding: 0.75rem 2rem;
+        border-radius: 8px;
+        font-weight: 500;
+    }
+    
+    .btn-primary:hover {
+        background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+        transform: translateY(-1px);
+    }
+    
+    .status-options {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .status-option {
+        padding: 1rem;
+        border: 2px solid #dee2e6;
+        border-radius: 8px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .status-option:hover {
+        border-color: #667eea;
+        background-color: #f0f2ff;
+    }
+    
+    .status-option.selected {
+        border-color: #667eea;
+        background-color: #e3f2fd;
+    }
+    
+    .status-option input[type="radio"] {
+        display: none;
+    }
+    
+    .character-count {
+        font-size: 0.85rem;
+        color: #6c757d;
+        text-align: right;
+        margin-top: 0.25rem;
+    }
+    
+    .character-count.warning {
+        color: #ffc107;
+    }
+    
+    .character-count.danger {
+        color: #dc3545;
+    }
+    
+    .post-preview {
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+        border-left: 4px solid #667eea;
+    }
+    
+    .preview-title {
+        font-size: 1.8rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: #212529;
+    }
+    
+    .preview-excerpt {
+        color: #6c757d;
+        font-style: italic;
+        margin-bottom: 1rem;
+    }
+    
+    .preview-content {
+        line-height: 1.6;
+    }
+    
+    .changes-indicator {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        background: #ffc107;
+        color: #212529;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        z-index: 1050;
+        display: none;
+    }
+    
+    .revision-history {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .revision-item {
+        display: flex;
+        justify-content: between;
+        align-items: center;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .revision-item:last-child {
+        border-bottom: none;
+    }
+    
+    @media (max-width: 768px) {
+        .edit-header {
+            padding: 1.5rem 0;
+        }
+        
+        .form-section {
+            padding: 1.5rem;
+        }
+        
+        .upload-area {
+            padding: 2rem 1rem;
+        }
+        
+        .changes-indicator {
+            position: relative;
+            top: auto;
+            right: auto;
+            margin-bottom: 1rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Edit Post Header -->
+<div class="edit-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <nav aria-label="breadcrumb" class="mb-2">
+                    <ol class="breadcrumb" style="background: transparent; padding: 0; margin: 0;">
+                        <li class="breadcrumb-item">
+                            <a href="{% if current_user.is_admin %}/posts/admin-dashboard/{% else %}/posts/dashboard/{% endif %}" 
+                               style="color: rgba(255,255,255,0.8);">Dashboard</a>
+                        </li>
+                        <li class="breadcrumb-item">
+                            <a href="{% if current_user.is_admin %}/posts/admin-posts/{% else %}/posts/my-posts/{% endif %}" 
+                               style="color: rgba(255,255,255,0.8);">Posts</a>
+                        </li>
+                        <li class="breadcrumb-item active" style="color: white;">Edit Post</li>
+                    </ol>
+                </nav>
+                <h1 class="h2 mb-1">
+                    <i class="bi bi-pencil-square me-2"></i>
+                    Edit Post
+                </h1>
+                <p class="mb-0 opacity-75">Update your post content and settings</p>
+            </div>
+            <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                <a href="/posts/{{ post.slug }}/" class="btn btn-light me-2">
+                    <i class="bi bi-eye me-1"></i>View Post
+                </a>
+                <a href="{% if current_user.is_admin %}/posts/admin-posts/{% else %}/posts/my-posts/{% endif %}" 
+                   class="btn btn-outline-light">
+                    <i class="bi bi-arrow-left me-1"></i>Back to Posts
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Changes Indicator -->
+<div class="changes-indicator" id="changesIndicator">
+    <i class="bi bi-exclamation-triangle me-1"></i>
+    Unsaved changes
+</div>
+
+<div class="container">
+    <!-- Django Messages -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="row">
+        <!-- Edit Form -->
+        <div class="col-lg-8">
+            <form method="post" enctype="multipart/form-data" id="editForm">
+                {% csrf_token %}
+                
+                <!-- Basic Information -->
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <i class="bi bi-file-text text-primary"></i>
+                        Basic Information
+                    </h3>
+                    
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="form-floating mb-3">
+                                <input type="text" class="form-control" id="title" name="title" 
+                                       value="{{ post.title }}" required maxlength="200">
+                                <label for="title">Post Title *</label>
+                                <div class="character-count" id="titleCount">0/200</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-floating mb-3">
+                                <select class="form-select" id="category" name="category">
+                                    <option value="">Select Category</option>
+                                    {% for value, display in categories %}
+                                        <option value="{{ value }}" {% if post.category == value %}selected{% endif %}>
+                                            {{ display }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                <label for="category">Category</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-floating mb-3">
+                        <textarea class="form-control" id="excerpt" name="excerpt" 
+                                  style="height: 100px;" maxlength="300">{{ post.excerpt }}</textarea>
+                        <label for="excerpt">Excerpt (Brief description)</label>
+                        <div class="character-count" id="excerptCount">0/300</div>
+                    </div>
+                </div>
+
+                <!-- Content -->
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <i class="bi bi-pencil-square text-success"></i>
+                        Content
+                    </h3>
+                    
+                    <div class="form-floating mb-3">
+                        <textarea class="form-control content-editor" id="content" name="content" required>{{ post.content }}</textarea>
+                        <label for="content">Post Content *</label>
+                        <div class="form-text">Write your post content. Minimum 50 characters required.</div>
+                    </div>
+                </div>
+
+                <!-- Featured Image -->
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <i class="bi bi-image text-info"></i>
+                        Featured Image
+                    </h3>
+                    
+                    {% if post.featured_image %}
+                        <div class="mb-3">
+                            <label class="form-label">Current Image:</label>
+                            <div>
+                                <img src="{{ post.featured_image.url }}" alt="Current featured image" class="current-image">
+                                <div class="mt-2">
+                                    <label class="form-check-label">
+                                        <input type="checkbox" name="remove_image" class="form-check-input">
+                                        Remove current image
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                    
+                    <div class="upload-area" id="uploadArea" onclick="document.getElementById('featured_image').click();">
+                        <i class="bi bi-cloud-upload fs-1 text-muted mb-3"></i>
+                        <h5>{% if post.featured_image %}Replace image{% else %}Upload featured image{% endif %}</h5>
+                        <p class="text-muted mb-0">Click to upload or drag and drop</p>
+                        <p class="text-muted mb-0">JPEG, PNG, or GIF (max 5MB)</p>
+                        <input type="file" id="featured_image" name="featured_image" accept="image/*" style="display: none;">
+                    </div>
+                    <div id="imagePreview"></div>
+                </div>
+
+                <!-- Tags and Settings -->
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <i class="bi bi-tags text-warning"></i>
+                        Tags & Settings
+                    </h3>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-floating mb-3">
+                                <input type="text" class="form-control" id="tags" name="tags" 
+                                       value="{{ post.tags }}" placeholder="e.g., technology, web, programming">
+                                <label for="tags">Tags (comma-separated)</label>
+                                <div class="form-text">Separate tags with commas for better discoverability</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            {% if current_user.is_admin %}
+                            <div class="form-check form-switch mb-3" style="margin-top: 1rem;">
+                                <input class="form-check-input" type="checkbox" id="is_featured" name="is_featured" 
+                                       {% if post.is_featured %}checked{% endif %}>
+                                <label class="form-check-label" for="is_featured">
+                                    <i class="bi bi-star-fill text-warning me-1"></i>
+                                    Feature this post
+                                </label>
+                                <div class="form-text">Featured posts appear prominently on the homepage</div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Publishing Options -->
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <i class="bi bi-send text-purple"></i>
+                        Publishing Options
+                    </h3>
+                    
+                    <div class="status-options">
+                        {% for value, display in status_choices %}
+                            <label class="status-option {% if post.status == value %}selected{% endif %}">
+                                <input type="radio" name="status" value="{{ value }}" 
+                                       {% if post.status == value %}checked{% endif %}>
+                                <div>
+                                    {% if value == 'draft' %}
+                                        <i class="bi bi-pencil-square fs-4 text-secondary mb-2"></i>
+                                        <h6>Save as Draft</h6>
+                                        <small class="text-muted">Continue working on it later</small>
+                                    {% elif value == 'published' %}
+                                        <i class="bi bi-check-circle fs-4 text-success mb-2"></i>
+                                        <h6>Published</h6>
+                                        <small class="text-muted">Visible to everyone</small>
+                                    {% elif value == 'archived' %}
+                                        <i class="bi bi-archive fs-4 text-warning mb-2"></i>
+                                        <h6>Archived</h6>
+                                        <small class="text-muted">Hidden from public view</small>
+                                    {% endif %}
+                                </div>
+                            </label>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="form-section">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="d-flex gap-3">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-check-circle me-1"></i>Update Post
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="saveDraft()">
+                                    <i class="bi bi-save me-1"></i>Save Draft
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-6 text-md-end mt-3 mt-md-0">
+                            <button type="button" class="btn btn-outline-info me-2" onclick="togglePreview()">
+                                <i class="bi bi-eye me-1"></i>Preview
+                            </button>
+                            <button type="button" class="btn btn-outline-danger" onclick="confirmDelete()">
+                                <i class="bi bi-trash me-1"></i>Delete Post
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Post Info -->
+            <div class="form-section">
+                <h5 class="mb-3">
+                    <i class="bi bi-info-circle text-info me-2"></i>
+                    Post Information
+                </h5>
+                <div class="mb-2">
+                    <strong>Created:</strong> {{ post.created_at|date:"F d, Y g:i A" }}
+                </div>
+                <div class="mb-2">
+                    <strong>Last Updated:</strong> {{ post.updated_at|date:"F d, Y g:i A" }}
+                </div>
+                <div class="mb-2">
+                    <strong>Status:</strong> 
+                    <span class="badge bg-{% if post.status == 'published' %}success{% elif post.status == 'draft' %}warning{% else %}secondary{% endif %}">
+                        {{ post.get_status_display }}
+                    </span>
+                </div>
+                <div class="mb-2">
+                    <strong>Views:</strong> {{ post.views }}
+                </div>
+                <div class="mb-2">
+                    <strong>Slug:</strong> <code>{{ post.slug }}</code>
+                </div>
+                {% if post.published_at %}
+                    <div class="mb-2">
+                        <strong>Published:</strong> {{ post.published_at|date:"F d, Y g:i A" }}
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Revision History (if available) -->
+            {% if revisions %}
+                <div class="form-section">
+                    <h5 class="mb-3">
+                        <i class="bi bi-clock-history text-secondary me-2"></i>
+                        Recent Changes
+                    </h5>
+                    <div class="revision-history">
+                        {% for revision in revisions %}
+                            <div class="revision-item">
+                                <div>
+                                    <div class="fw-semibold">{{ revision.created_at|date:"M d, Y g:i A" }}</div>
+                                    <div class="text-muted small">{{ revision.comment|default:"No comment" }}</div>
+                                </div>
+                                <button type="button" class="btn btn-outline-primary btn-sm">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Quick Actions -->
+            <div class="form-section">
+                <h5 class="mb-3">
+                    <i class="bi bi-lightning text-warning me-2"></i>
+                    Quick Actions
+                </h5>
+                <div class="d-grid gap-2">
+                    <a href="/posts/{{ post.slug }}/" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-eye me-1"></i>View Post
+                    </a>
+                    <a href="/posts/create/" class="btn btn-outline-success btn-sm">
+                        <i class="bi bi-plus-circle me-1"></i>Create New Post
+                    </a>
+                    {% if current_user.is_admin %}
+                        <a href="/posts/admin-posts/" class="btn btn-outline-info btn-sm">
+                            <i class="bi bi-collection me-1"></i>All Posts
+                        </a>
+                    {% else %}
+                        <a href="/posts/my-posts/" class="btn btn-outline-info btn-sm">
+                            <i class="bi bi-collection me-1"></i>My Posts
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Preview Modal -->
+<div class="modal fade" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="previewModalLabel">
+                    <i class="bi bi-eye me-2"></i>Post Preview
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="post-preview" id="previewContent">
+                    <!-- Preview content will be populated by JavaScript -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close Preview</button>
+                <button type="button" class="btn btn-primary" onclick="document.getElementById('editForm').submit();">
+                    <i class="bi bi-check-circle me-1"></i>Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title" id="deleteModalLabel">
+                    <i class="bi bi-exclamation-triangle text-danger me-2"></i>
+                    Confirm Deletion
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this post?</p>
+                <p class="text-muted small">This action cannot be undone. The post and all its associated data will be permanently removed.</p>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" action="/posts/delete/{{ post.id }}/" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-1"></i>Delete Post
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Track changes
+let hasUnsavedChanges = false;
+const originalFormData = new FormData(document.getElementById('editForm'));
+
+// Character counters
+function updateCharCount(inputId, countId, maxLength) {
+    const input = document.getElementById(inputId);
+    const counter = document.getElementById(countId);
+    
+    input.addEventListener('input', function() {
+        const length = this.value.length;
+        counter.textContent = `${length}/${maxLength}`;
+        
+        counter.classList.remove('warning', 'danger');
+        if (length > maxLength * 0.8) {
+            counter.classList.add('warning');
+        }
+        if (length > maxLength * 0.95) {
+            counter.classList.add('danger');
+        }
+        
+        // Mark as changed
+        markAsChanged();
+    });
+    
+    // Trigger initial count
+    input.dispatchEvent(new Event('input'));
+}
+
+updateCharCount('title', 'titleCount', 200);
+updateCharCount('excerpt', 'excerptCount', 300);
+
+// Mark form as changed
+function markAsChanged() {
+    hasUnsavedChanges = true;
+    document.getElementById('changesIndicator').style.display = 'block';
+}
+
+// Track all form changes
+document.getElementById('editForm').addEventListener('input', markAsChanged);
+document.getElementById('editForm').addEventListener('change', markAsChanged);
+
+// Warn before leaving with unsaved changes
+window.addEventListener('beforeunload', function(e) {
+    if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+        return e.returnValue;
+    }
+});
+
+// Image upload handling
+document.getElementById('featured_image').addEventListener('change', function() {
+    const file = this.files[0];
+    const preview = document.getElementById('imagePreview');
+    
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            preview.innerHTML = `
+                <img src="${e.target.result}" alt="Preview" class="preview-image">
+                <div class="mt-2">
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeNewImage()">
+                        <i class="bi bi-trash"></i> Remove New Image
+                    </button>
+                </div>
+            `;
+        };
+        reader.readAsDataURL(file);
+        markAsChanged();
+    }
+});
+
+function removeNewImage() {
+    document.getElementById('featured_image').value = '';
+    document.getElementById('imagePreview').innerHTML = '';
+    markAsChanged();
+}
+
+// Drag and drop for image upload
+const uploadArea = document.getElementById('uploadArea');
+
+uploadArea.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    uploadArea.classList.add('dragover');
+});
+
+uploadArea.addEventListener('dragleave', function(e) {
+    e.preventDefault();
+    uploadArea.classList.remove('dragover');
+});
+
+uploadArea.addEventListener('drop', function(e) {
+    e.preventDefault();
+    uploadArea.classList.remove('dragover');
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+        document.getElementById('featured_image').files = files;
+        document.getElementById('featured_image').dispatchEvent(new Event('change'));
+    }
+});
+
+// Status option selection
+document.querySelectorAll('.status-option').forEach(option => {
+    option.addEventListener('click', function() {
+        document.querySelectorAll('.status-option').forEach(opt => opt.classList.remove('selected'));
+        this.classList.add('selected');
+        this.querySelector('input[type="radio"]').checked = true;
+        markAsChanged();
+    });
+});
+
+// Save draft function
+function saveDraft() {
+    document.querySelector('input[name="status"][value="draft"]').checked = true;
+    document.querySelectorAll('.status-option').forEach(opt => opt.classList.remove('selected'));
+    document.querySelector('input[name="status"][value="draft"]').closest('.status-option').classList.add('selected');
+    document.getElementById('editForm').submit();
+}
+
+// Preview function
+function togglePreview() {
+    const title = document.getElementById('title').value || 'Untitled Post';
+    const excerpt = document.getElementById('excerpt').value;
+    const content = document.getElementById('content').value || 'No content';
+    
+    const previewHTML = `
+        <h2 class="preview-title">${title}</h2>
+        ${excerpt ? `<p class="preview-excerpt">${excerpt}</p>` : ''}
+        <div class="preview-content">${content.replace(/\n/g, '<br>')}</div>
+    `;
+    
+    document.getElementById('previewContent').innerHTML = previewHTML;
+    
+    const previewModal = new bootstrap.Modal(document.getElementById('previewModal'));
+    previewModal.show();
+}
+
+// Delete confirmation
+function confirmDelete() {
+    const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    deleteModal.show();
+}
+
+// Form submission handling
+document.getElementById('editForm').addEventListener('submit', function() {
+    hasUnsavedChanges = false; // Don't warn about leaving after successful submit
+    document.getElementById('changesIndicator').style.display = 'none';
+});
+
+// Auto-save functionality (every 2 minutes)
+let autoSaveTimer;
+function autoSave() {
+    if (!hasUnsavedChanges) return;
+    
+    const formData = new FormData(document.getElementById('editForm'));
+    formData.set('status', 'draft');
+    formData.set('auto_save', 'true');
+    
+    fetch(window.location.href, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    }).then(response => {
+        if (response.ok) {
+            // Show auto-save success
+            showToast('Auto-saved successfully', 'success');
+            hasUnsavedChanges = false;
+            document.getElementById('changesIndicator').style.display = 'none';
+        }
+    }).catch(error => {
+        console.error('Auto-save failed:', error);
+    });
+}
+
+// Set up auto-save
+setInterval(autoSave, 120000); // 2 minutes
+
+// Show toast notification
+function showToast(message, type = 'info') {
+    const toast = `
+        <div class="toast-container position-fixed top-0 end-0 p-3">
+            <div class="toast show" role="alert">
+                <div class="toast-header">
+                    <i class="bi bi-${type === 'success' ? 'check-circle text-success' : 'info-circle text-info'} me-2"></i>
+                    <strong class="me-auto">${type === 'success' ? 'Success' : 'Info'}</strong>
+                    <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+                </div>
+                <div class="toast-body">
+                    ${message}
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', toast);
+    
+    setTimeout(() => {
+        const toastElement = document.querySelector('.toast-container');
+        if (toastElement) toastElement.remove();
+    }, 3000);
+}
+
+// Auto-dismiss alerts
+setTimeout(function() {
+    const alerts = document.querySelectorAll('.alert');
+    alerts.forEach(alert => {
+        const bsAlert = new bootstrap.Alert(alert);
+        bsAlert.close();
+    });
+}, 5000);
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    // Ctrl+S or Cmd+S for save
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        document.getElementById('editForm').submit();
+    }
+    
+    // Ctrl+Shift+P or Cmd+Shift+P for preview
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'P') {
+        e.preventDefault();
+        togglePreview();
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,574 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Welcome to My Blog{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Hero Section with Gradient */
+    .hero-section {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        position: relative;
+        overflow: hidden;
+        min-height: 80vh;
+        display: flex;
+        align-items: center;
+    }
+    
+    .hero-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.3);
+        z-index: 1;
+    }
+    
+    .hero-title {
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        animation: fadeInUp 1s ease-out;
+    }
+    
+    .hero-image {
+        max-height: 400px;
+        object-fit: cover;
+        width: 100%;
+        border-radius: 20px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        transition: transform 0.3s ease;
+    }
+    
+    .hero-image:hover {
+        transform: scale(1.02);
+    }
+    
+    /* Stats Section */
+    .stats-section {
+        background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+        border-radius: 20px;
+        margin: 0 20px;
+    }
+    
+    .stat-item {
+        transition: transform 0.3s ease;
+    }
+    
+    .stat-item:hover {
+        transform: translateY(-5px);
+    }
+    
+    .stat-number {
+        font-size: 2.5rem;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* Feature Cards */
+    .feature-card {
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .feature-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+        transition: left 0.5s;
+    }
+    
+    .feature-card:hover::before {
+        left: 100%;
+    }
+    
+    .feature-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+        border-color: rgba(0, 123, 255, 0.2);
+    }
+    
+    .feature-icon {
+        transition: transform 0.3s ease;
+    }
+    
+    .feature-card:hover .feature-icon {
+        transform: scale(1.1);
+    }
+    
+    /* Categories Section */
+    .categories-section {
+        background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .categories-section::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='rgba(255,255,255,0.05)' fill-opacity='0.1'%3E%3Cpath d='M20 20c0-11.046 8.954-20 20-20v20H20z'/%3E%3C/g%3E%3C/svg%3E") repeat;
+    }
+    
+    .category-card {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        transition: all 0.3s ease;
+        text-align: center;
+    }
+    
+    .category-card:hover {
+        background: rgba(255, 255, 255, 0.2);
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    }
+    
+    /* Call to Action Section */
+    .cta-section {
+        background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .cta-section::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='rgba(255,255,255,0.1)' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='4'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") repeat;
+    }
+    
+    /* Animations */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    @keyframes pulse {
+        0%, 100% {
+            transform: scale(1);
+        }
+        50% {
+            transform: scale(1.05);
+        }
+    }
+    
+    /* Button Enhancements */
+    .btn {
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+    
+    .btn-warning {
+        background: linear-gradient(45deg, #ffc107, #ffb300);
+        border: none;
+        color: #212529;
+    }
+    
+    .btn-warning:hover {
+        background: linear-gradient(45deg, #ffb300, #ff8f00);
+        color: #212529;
+    }
+    
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .hero-section {
+            min-height: 60vh;
+            padding: 2rem 0;
+        }
+        
+        .display-3 {
+            font-size: 2rem;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+        }
+        
+        .feature-card {
+            margin-bottom: 2rem;
+        }
+    }
+    
+    /* Scroll animations */
+    .fade-in {
+        opacity: 0;
+        transform: translateY(20px);
+        transition: all 0.6s ease;
+    }
+    
+    .fade-in.visible {
+        opacity: 1;
+        transform: translateY(0);
+    }
+</style>
+{% endblock %}
+
+{% block page_header %}
+<!-- Hero Section with Gradient Background -->
+<div class="hero-section px-4 pt-5 my-5 text-center text-white position-relative">
+    <div class="hero-overlay"></div>
+    <div class="container position-relative" style="z-index: 2;">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <h1 class="display-3 fw-bold mb-4 hero-title">
+                    <i class="bi bi-feather text-warning me-3"></i>
+                    Welcome to BlogSphere
+                </h1>
+                <p class="lead mb-4 fs-4">
+                    Discover amazing stories, insights, and ideas from passionate writers around the world. 
+                    Share your voice and connect with a community of readers and creators.
+                </p>
+                <div class="d-grid gap-3 d-sm-flex justify-content-sm-center mb-5">
+                    <a href="/posts/" class="btn btn-warning btn-lg px-5 py-3 fw-bold">
+                        <i class="bi bi-book-open me-2"></i>Explore Posts
+                    </a>
+                    <a href="/create-post/" class="btn btn-outline-light btn-lg px-5 py-3 fw-bold">
+                        <i class="bi bi-pencil-square me-2"></i>Start Writing
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Featured Image with enhanced styling -->
+        <div class="row justify-content-center mt-5">
+            <div class="col-lg-10">
+                <div class="overflow-hidden rounded-4 shadow-lg">
+                    <img src="{% static 'images/image1.png' %}" class="img-fluid hero-image" alt="Blog Community" loading="lazy">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Stats Section -->
+<div class="row mb-5">
+    <div class="col-12">
+        <div class="stats-section py-5">
+            <div class="row text-center">
+                <div class="col-md-3 mb-4">
+                    <div class="stat-item">
+                        <div class="stat-icon mb-3">
+                            <i class="bi bi-journal-text text-primary fs-1"></i>
+                        </div>
+                        <h3 class="stat-number text-primary fw-bold">150+</h3>
+                        <p class="stat-label text-muted">Blog Posts</p>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-4">
+                    <div class="stat-item">
+                        <div class="stat-icon mb-3">
+                            <i class="bi bi-people text-success fs-1"></i>
+                        </div>
+                        <h3 class="stat-number text-success fw-bold">50+</h3>
+                        <p class="stat-label text-muted">Active Writers</p>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-4">
+                    <div class="stat-item">
+                        <div class="stat-icon mb-3">
+                            <i class="bi bi-eye text-info fs-1"></i>
+                        </div>
+                        <h3 class="stat-number text-info fw-bold">10K+</h3>
+                        <p class="stat-label text-muted">Monthly Readers</p>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-4">
+                    <div class="stat-item">
+                        <div class="stat-icon mb-3">
+                            <i class="bi bi-tags text-warning fs-1"></i>
+                        </div>
+                        <h3 class="stat-number text-warning fw-bold">25+</h3>
+                        <p class="stat-label text-muted">Categories</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Content Section -->
+<div class="row justify-content-center mb-5">
+    <div class="col-lg-10">
+        <div class="text-center mb-5">
+            <h2 class="display-5 fw-bold text-dark mb-4">
+                <i class="bi bi-stars text-warning me-2"></i>
+                Your Journey Starts Here
+            </h2>
+            <p class="fs-5 text-muted mb-4">
+                Hello Author! Welcome to our vibrant blogging community where stories come alive.
+            </p>
+        </div>
+        
+        <!-- Feature Cards -->
+        <div class="row g-4 mb-5">
+            <div class="col-lg-4">
+                <div class="feature-card h-100 p-4 text-center rounded-4 shadow-sm">
+                    <div class="feature-icon mb-3">
+                        <i class="bi bi-book-open text-primary" style="font-size: 3rem;"></i>
+                    </div>
+                    <h4 class="fw-bold text-dark mb-3">Read & Explore</h4>
+                    <p class="text-muted mb-4">
+                        Dive into a vast collection of articles covering technology, lifestyle, travel, and more.
+                    </p>
+                    <a href="/posts/" class="btn btn-outline-primary rounded-pill px-4">
+                        Browse Posts <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <div class="feature-card h-100 p-4 text-center rounded-4 shadow-sm">
+                    <div class="feature-icon mb-3">
+                        <i class="bi bi-pencil-square text-success" style="font-size: 3rem;"></i>
+                    </div>
+                    <h4 class="fw-bold text-dark mb-3">Write & Share</h4>
+                    <p class="text-muted mb-4">
+                        Express your thoughts and share your expertise with our growing community of readers.
+                    </p>
+                    <a href="/create-post/" class="btn btn-outline-success rounded-pill px-4">
+                        Start Writing <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <div class="feature-card h-100 p-4 text-center rounded-4 shadow-sm">
+                    <div class="feature-icon mb-3">
+                        <i class="bi bi-people text-info" style="font-size: 3rem;"></i>
+                    </div>
+                    <h4 class="fw-bold text-dark mb-3">Connect & Engage</h4>
+                    <p class="text-muted mb-4">
+                        Join discussions, follow your favorite authors, and be part of meaningful conversations.
+                    </p>
+                    <a href="/authors/" class="btn btn-outline-info rounded-pill px-4">
+                        Meet Authors <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Categories Section -->
+<div class="row mb-5">
+    <div class="col-12">
+        <div class="categories-section py-5 rounded-4">
+            <div class="text-center mb-5">
+                <h3 class="display-6 fw-bold text-white mb-3">Explore Categories</h3>
+                <p class="text-white-50 fs-5">Find content that matches your interests</p>
+            </div>
+            <div class="row g-3">
+                <div class="col-md-3 col-sm-6">
+                    <a href="/category/technology/" class="category-card d-block p-3 rounded-3 text-decoration-none">
+                        <i class="bi bi-cpu text-primary fs-2 mb-2"></i>
+                        <h5 class="text-white fw-bold">Technology</h5>
+                        <small class="text-white-50">Latest tech trends</small>
+                    </a>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <a href="/category/lifestyle/" class="category-card d-block p-3 rounded-3 text-decoration-none">
+                        <i class="bi bi-heart text-danger fs-2 mb-2"></i>
+                        <h5 class="text-white fw-bold">Lifestyle</h5>
+                        <small class="text-white-50">Life & wellness</small>
+                    </a>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <a href="/category/travel/" class="category-card d-block p-3 rounded-3 text-decoration-none">
+                        <i class="bi bi-airplane text-success fs-2 mb-2"></i>
+                        <h5 class="text-white fw-bold">Travel</h5>
+                        <small class="text-white-50">Adventures & guides</small>
+                    </a>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <a href="/category/food/" class="category-card d-block p-3 rounded-3 text-decoration-none">
+                        <i class="bi bi-cup-hot text-warning fs-2 mb-2"></i>
+                        <h5 class="text-white fw-bold">Food</h5>
+                        <small class="text-white-50">Recipes & reviews</small>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Call to Action Section -->
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="cta-section text-center p-5 rounded-4">
+            <h3 class="display-6 fw-bold text-white mb-4">Ready to Start Your Blogging Journey?</h3>
+            <p class="fs-5 text-white-50 mb-4">
+                Join thousands of writers and readers who are already part of our amazing community.
+            </p>
+            <div class="d-grid gap-3 d-sm-flex justify-content-sm-center">
+                <a href="/create-post/" class="btn btn-warning btn-lg px-5 py-3 fw-bold rounded-pill">
+                    <i class="bi bi-plus-circle me-2"></i>Create Your First Post
+                </a>
+                <a href="/posts/" class="btn btn-outline-light btn-lg px-5 py-3 fw-bold rounded-pill">
+                    <i class="bi bi-collection me-2"></i>Explore All Posts
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Smooth scroll animation for elements coming into view
+    const observerOptions = {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
+    };
+    
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('visible');
+            }
+        });
+    }, observerOptions);
+    
+    // Observe all fade-in elements
+    document.addEventListener('DOMContentLoaded', function() {
+        const fadeElements = document.querySelectorAll('.fade-in');
+        fadeElements.forEach(el => observer.observe(el));
+        
+        // Add fade-in class to stat items
+        const statItems = document.querySelectorAll('.stat-item');
+        statItems.forEach((item, index) => {
+            item.classList.add('fade-in');
+            item.style.transitionDelay = `${index * 0.1}s`;
+        });
+        
+        // Add fade-in class to feature cards
+        const featureCards = document.querySelectorAll('.feature-card');
+        featureCards.forEach((card, index) => {
+            card.classList.add('fade-in');
+            card.style.transitionDelay = `${index * 0.2}s`;
+        });
+        
+        // Add fade-in class to category cards
+        const categoryCards = document.querySelectorAll('.category-card');
+        categoryCards.forEach((card, index) => {
+            card.classList.add('fade-in');
+            card.style.transitionDelay = `${index * 0.1}s`;
+        });
+    });
+    
+    // Animated counter for stats
+    function animateCounter(element, target, duration = 2000) {
+        let start = 0;
+        const increment = target / (duration / 16);
+        const timer = setInterval(() => {
+            start += increment;
+            if (start >= target) {
+                element.textContent = target + '+';
+                clearInterval(timer);
+            } else {
+                element.textContent = Math.floor(start) + '+';
+            }
+        }, 16);
+    }
+    
+    // Trigger counter animation when stats section comes into view
+    const statsObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const counters = entry.target.querySelectorAll('.stat-number');
+                counters.forEach(counter => {
+                    const target = parseInt(counter.textContent);
+                    animateCounter(counter, target);
+                });
+                statsObserver.unobserve(entry.target);
+            }
+        });
+    }, { threshold: 0.5 });
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        const statsSection = document.querySelector('.stats-section');
+        if (statsSection) {
+            statsObserver.observe(statsSection);
+        }
+    });
+    
+    // Add parallax effect to hero section
+    window.addEventListener('scroll', () => {
+        const scrolled = window.pageYOffset;
+        const heroImage = document.querySelector('.hero-image');
+        if (heroImage) {
+            heroImage.style.transform = `translateY(${scrolled * 0.1}px)`;
+        }
+    });
+    
+    // Add click animation to buttons
+    document.addEventListener('DOMContentLoaded', function() {
+        const buttons = document.querySelectorAll('.btn');
+        buttons.forEach(button => {
+            button.addEventListener('click', function(e) {
+                const ripple = document.createElement('span');
+                ripple.classList.add('ripple');
+                const rect = this.getBoundingClientRect();
+                const size = Math.max(rect.width, rect.height);
+                ripple.style.width = ripple.style.height = size + 'px';
+                ripple.style.left = (e.clientX - rect.left - size / 2) + 'px';
+                ripple.style.top = (e.clientY - rect.top - size / 2) + 'px';
+                this.appendChild(ripple);
+                
+                setTimeout(() => {
+                    ripple.remove();
+                }, 600);
+            });
+        });
+    });
+</script>
+
+<style>
+    /* Ripple effect for buttons */
+    .btn {
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .ripple {
+        position: absolute;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.4);
+        transform: scale(0);
+        animation: ripple-animation 0.6s linear;
+        pointer-events: none;
+    }
+    
+    @keyframes ripple-animation {
+        to {
+            transform: scale(4);
+            opacity: 0;
+        }
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,641 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Sign Up - BlogSphere{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Similar base styles as login page with signup-specific modifications */
+    .signup-page {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .signup-page::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='rgba(255,255,255,0.1)' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='4'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") repeat;
+        z-index: 1;
+    }
+    
+    .signup-container {
+        position: relative;
+        z-index: 2;
+    }
+    
+    .signup-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 20px;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+        transition: all 0.3s ease;
+        overflow: hidden;
+    }
+    
+    .signup-header {
+        background: linear-gradient(135deg, #11998e, #38ef7d);
+        color: white;
+        padding: 2rem;
+        text-align: center;
+        position: relative;
+    }
+    
+    .signup-header::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 20px;
+        background: url("data:image/svg+xml,%3Csvg viewBox='0 0 1200 120' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0,0V46.29c47.79,22.2,103.59,32.17,158,28,70.36-5.37,136.33-33.31,206.8-37.5C438.64,32.43,512.34,53.67,583,72.05c69.27,18,138.3,24.88,209.4,13.08,36.15-6,69.85-17.84,104.45-29.34C989.49,25,1113-14.29,1200,52.47V0Z' fill='rgba(255,255,255,0.95)'/%3E%3C/svg%3E");
+        background-size: cover;
+    }
+    
+    .btn-signup {
+        background: linear-gradient(135deg, #11998e, #38ef7d);
+        border: none;
+        border-radius: 15px;
+        padding: 1rem 2rem;
+        font-weight: 600;
+        font-size: 1.1rem;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        width: 100%;
+    }
+    
+    .btn-signup:hover {
+        background: linear-gradient(135deg, #0d7377, #2dd46c);
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(17, 153, 142, 0.3);
+    }
+    
+    /* Password strength indicator */
+    .password-strength {
+        height: 5px;
+        border-radius: 3px;
+        margin-top: 5px;
+        transition: all 0.3s ease;
+    }
+    
+    .strength-weak { background: #dc3545; width: 25%; }
+    .strength-fair { background: #fd7e14; width: 50%; }
+    .strength-good { background: #ffc107; width: 75%; }
+    .strength-strong { background: #198754; width: 100%; }
+    
+    .password-requirements {
+        font-size: 0.85rem;
+        margin-top: 0.5rem;
+    }
+    
+    .requirement {
+        color: #6c757d;
+        transition: color 0.3s ease;
+    }
+    
+    .requirement.met {
+        color: #198754;
+    }
+    
+    .requirement i {
+        width: 16px;
+    }
+    
+    /* Form styling inherited from login page */
+    .form-floating {
+        position: relative;
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-control {
+        border: 2px solid #e9ecef;
+        border-radius: 15px;
+        padding: 1rem;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        background: rgba(255, 255, 255, 0.9);
+    }
+    
+    .form-control:focus {
+        border-color: #11998e;
+        box-shadow: 0 0 0 0.2rem rgba(17, 153, 142, 0.25);
+        background: rgba(255, 255, 255, 1);
+        transform: translateY(-2px);
+    }
+    
+    .signin-link {
+        background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-top: 2rem;
+        text-align: center;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+    }
+    
+    .signin-link a {
+        color: #11998e;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    
+    .signin-link a:hover {
+        color: #0d7377;
+        text-decoration: underline;
+    }
+    
+    /* Responsive design and animations inherited from login */
+    .fade-in {
+        opacity: 0;
+        transform: translateY(20px);
+        animation: fadeInUp 0.6s ease forwards;
+    }
+    
+    @keyframes fadeInUp {
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .signup-card {
+            margin: 1rem;
+            border-radius: 15px;
+        }
+        
+        .signup-header {
+            padding: 1.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block page_header %}
+<!-- Remove default header for signup page -->
+{% endblock %}
+
+{% block content %}
+<div class="signup-page">
+    <div class="container signup-container">
+        <div class="row justify-content-center">
+            <div class="col-lg-6 col-md-8 col-sm-10">
+                <div class="signup-card fade-in">
+                    <!-- Signup Header -->
+                    <div class="signup-header">
+                        <div class="login-icon">
+                            <i class="bi bi-person-plus-fill" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+                        </div>
+                        <h2 class="fw-bold mb-0">Join BlogSphere!</h2>
+                        <p class="mb-0 opacity-75">Create your account and start your blogging journey</p>
+                    </div>
+                    
+                    <!-- Signup Form -->
+                    <div class="p-4">
+                                                                            <form method="post" action="/posts/signup/" enctype="multipart/form-data" novalidate>
+                            {% csrf_token %}
+                            
+                            <!-- Name Fields -->
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-floating fade-in" style="animation-delay: 0.1s;">
+                                        <input type="text" class="form-control" id="firstName" name="first_name" placeholder="First Name" required>
+                                        <label for="firstName">
+                                            <i class="bi bi-person me-2"></i>First Name
+                                        </label>
+                                        <div class="invalid-feedback">
+                                            Please enter your first name.
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-floating fade-in" style="animation-delay: 0.15s;">
+                                        <input type="text" class="form-control" id="lastName" name="last_name" placeholder="Last Name" required>
+                                        <label for="lastName">
+                                            <i class="bi bi-person me-2"></i>Last Name
+                                        </label>
+                                        <div class="invalid-feedback">
+                                            Please enter your last name.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Username Field -->
+                            <div class="form-floating fade-in" style="animation-delay: 0.2s;">
+                                <input type="text" class="form-control" id="username" name="username" placeholder="Username" required>
+                                <label for="username">
+                                    <i class="bi bi-at me-2"></i>Username
+                                </label>
+                                <div class="invalid-feedback">
+                                    Please choose a username.
+                                </div>
+                            </div>
+                            
+                            <!-- Email Field -->
+                            <div class="form-floating fade-in" style="animation-delay: 0.25s;">
+                                <input type="email" class="form-control" id="email" name="email" placeholder="Email" required>
+                                <label for="email">
+                                    <i class="bi bi-envelope me-2"></i>Email Address
+                                </label>
+                                <div class="invalid-feedback">
+                                    Please enter a valid email address.
+                                </div>
+                            </div>
+                            
+                            <!-- Password Field -->
+                            <div class="form-floating fade-in position-relative" style="animation-delay: 0.3s;">
+                                <input type="password" class="form-control" id="password" name="password" placeholder="Password" required>
+                                <label for="password">
+                                    <i class="bi bi-lock me-2"></i>Password
+                                </label>
+                                <button type="button" class="password-toggle" onclick="togglePassword('password')">
+                                    <i class="bi bi-eye" id="passwordToggleIcon"></i>
+                                </button>
+                                <div class="invalid-feedback">
+                                    Please enter a strong password.
+                                </div>
+                                
+                                <!-- Password Strength Indicator -->
+                                <div class="password-strength" id="passwordStrength"></div>
+                                
+                                <!-- Password Requirements -->
+                                <div class="password-requirements">
+                                    <div class="requirement" id="req-length">
+                                        <i class="bi bi-x-circle"></i> At least 8 characters
+                                    </div>
+                                    <div class="requirement" id="req-uppercase">
+                                        <i class="bi bi-x-circle"></i> One uppercase letter
+                                    </div>
+                                    <div class="requirement" id="req-lowercase">
+                                        <i class="bi bi-x-circle"></i> One lowercase letter
+                                    </div>
+                                    <div class="requirement" id="req-number">
+                                        <i class="bi bi-x-circle"></i> One number
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Confirm Password Field -->
+                            <div class="form-floating fade-in position-relative" style="animation-delay: 0.35s;">
+                                <input type="password" class="form-control" id="confirmPassword" name="confirm_password" placeholder="Confirm Password" required>
+                                <label for="confirmPassword">
+                                    <i class="bi bi-lock-fill me-2"></i>Confirm Password
+                                </label>
+                                <button type="button" class="password-toggle" onclick="togglePassword('confirmPassword')">
+                                    <i class="bi bi-eye" id="confirmPasswordToggleIcon"></i>
+                                </button>
+                                <div class="invalid-feedback">
+                                    Passwords do not match.
+                                </div>
+                            </div>
+                            
+                            <!-- Profile Section Divider -->
+                            <div class="text-center my-4 fade-in" style="animation-delay: 0.4s;">
+                                <h5 class="text-muted">
+                                    <i class="bi bi-person-badge me-2"></i>Profile Information (Optional)
+                                </h5>
+                                <small class="text-muted">Complete your profile to get the most out of BlogSphere</small>
+                            </div>
+                            
+                            <!-- Profile Picture Field -->
+                            <div class="form-floating fade-in" style="animation-delay: 0.45s;">
+                                <input type="file" class="form-control" id="profilePicture" name="profile_picture" accept="image/*">
+                                <label for="profilePicture">
+                                    <i class="bi bi-camera me-2"></i>Profile Picture
+                                </label>
+                                <div class="form-text">Upload a profile picture (Max 5MB, JPEG/PNG/GIF)</div>
+                            </div>
+                            
+                            <!-- Bio Field -->
+                            <div class="form-floating fade-in" style="animation-delay: 0.5s;">
+                                <textarea class="form-control" id="bio" name="bio" placeholder="Tell us about yourself" maxlength="500" style="height: 100px;"></textarea>
+                                <label for="bio">
+                                    <i class="bi bi-chat-quote me-2"></i>Bio
+                                </label>
+                                <div class="form-text">
+                                    <span id="bioCount">0</span>/500 characters - Tell other bloggers about yourself
+                                </div>
+                            </div>
+                            
+                            <!-- Website Field -->
+                            <div class="form-floating fade-in" style="animation-delay: 0.55s;">
+                                <input type="url" class="form-control" id="website" name="website" placeholder="https://yourwebsite.com">
+                                <label for="website">
+                                    <i class="bi bi-globe me-2"></i>Website or Portfolio
+                                </label>
+                                <div class="form-text">Share your personal website, blog, or portfolio</div>
+                            </div>
+                            
+                            <!-- Location and Birth Date Row -->
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-floating fade-in" style="animation-delay: 0.6s;">
+                                        <input type="text" class="form-control" id="location" name="location" placeholder="Your Location" maxlength="100">
+                                        <label for="location">
+                                            <i class="bi bi-geo-alt me-2"></i>Location
+                                        </label>
+                                        <div class="form-text">City, Country</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-floating fade-in" style="animation-delay: 0.65s;">
+                                        <input type="date" class="form-control" id="birthDate" name="birth_date" placeholder="Birth Date">
+                                        <label for="birthDate">
+                                            <i class="bi bi-calendar me-2"></i>Birth Date
+                                        </label>
+                                        <div class="form-text">Optional</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Terms and Conditions -->
+                            <div class="form-check mb-3 fade-in" style="animation-delay: 0.7s;">
+                                <input class="form-check-input" type="checkbox" value="on" id="agreeTerms" name="agree_terms" required>
+                                <label class="form-check-label" for="agreeTerms">
+                                    I agree to the <a href="#" class="text-primary">Terms of Service</a> and <a href="#" class="text-primary">Privacy Policy</a>
+                                </label>
+                                <div class="invalid-feedback">
+                                    You must agree to the terms and conditions.
+                                </div>
+                            </div>
+                            
+                            <!-- Newsletter Subscription -->
+                            <div class="form-check mb-3 fade-in" style="animation-delay: 0.75s;">
+                                <input class="form-check-input" type="checkbox" value="" id="newsletter" name="newsletter">
+                                <label class="form-check-label" for="newsletter">
+                                    Subscribe to our newsletter for latest blog updates
+                                </label>
+                            </div>
+                            
+                            <!-- Signup Button -->
+                            <button type="submit" class="btn btn-signup fade-in" style="animation-delay: 0.8s;">
+                                <div class="loading-spinner" id="loadingSpinner" style="display: none;"></div>
+                                <i class="bi bi-person-check me-2"></i>
+                                <span id="signupButtonText">Create Account</span>
+                            </button>
+                        </form>
+                        
+                        <!-- Sign In Link -->
+                        <div class="signin-link fade-in" style="animation-delay: 0.6s;">
+                            <p class="mb-0">
+                                <i class="bi bi-person-circle me-2"></i>
+                                Already have an account? 
+                                <a href="/posts/login/">Sign in here</a>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Back to Home -->
+                <div class="text-center mt-4 fade-in" style="animation-delay: 0.7s;">
+                    <a href="/" class="text-white text-decoration-none">
+                        <i class="bi bi-arrow-left me-2"></i>Back to Home
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Password strength checker
+    function checkPasswordStrength(password) {
+        let strength = 0;
+        const requirements = {
+            length: password.length >= 8,
+            uppercase: /[A-Z]/.test(password),
+            lowercase: /[a-z]/.test(password),
+            number: /\d/.test(password)
+        };
+        
+        // Update requirement indicators
+        Object.keys(requirements).forEach(req => {
+            const element = document.getElementById(`req-${req}`);
+            const icon = element.querySelector('i');
+            
+            if (requirements[req]) {
+                element.classList.add('met');
+                icon.className = 'bi bi-check-circle';
+                strength++;
+            } else {
+                element.classList.remove('met');
+                icon.className = 'bi bi-x-circle';
+            }
+        });
+        
+        // Update strength bar
+        const strengthBar = document.getElementById('passwordStrength');
+        strengthBar.className = 'password-strength';
+        
+        if (strength === 0) {
+            strengthBar.style.width = '0%';
+        } else if (strength <= 1) {
+            strengthBar.classList.add('strength-weak');
+        } else if (strength <= 2) {
+            strengthBar.classList.add('strength-fair');
+        } else if (strength <= 3) {
+            strengthBar.classList.add('strength-good');
+        } else {
+            strengthBar.classList.add('strength-strong');
+        }
+        
+        return strength;
+    }
+    
+    // Password toggle functionality
+    function togglePassword(fieldId) {
+        const passwordInput = document.getElementById(fieldId);
+        const toggleIcon = document.getElementById(fieldId + 'ToggleIcon');
+        
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            toggleIcon.classList.remove('bi-eye');
+            toggleIcon.classList.add('bi-eye-slash');
+        } else {
+            passwordInput.type = 'password';
+            toggleIcon.classList.remove('bi-eye-slash');
+            toggleIcon.classList.add('bi-eye');
+        }
+    }
+    
+    // Form validation
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const form = this;
+        const password = document.getElementById('password').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+        const submitButton = document.querySelector('.btn-signup');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const buttonText = document.getElementById('signupButtonText');
+        
+        // Reset validation
+        form.classList.remove('was-validated');
+        
+        // Check password match
+        if (password !== confirmPassword) {
+            document.getElementById('confirmPassword').setCustomValidity('Passwords do not match');
+        } else {
+            document.getElementById('confirmPassword').setCustomValidity('');
+        }
+        
+        // Check form validity
+        if (!form.checkValidity()) {
+            e.preventDefault();
+            form.classList.add('was-validated');
+            return false;
+        }
+        
+        // Check password strength
+        if (checkPasswordStrength(password) < 3) {
+            e.preventDefault();
+            alert('Please choose a stronger password that meets all requirements.');
+            return false;
+        }
+        
+        // Show loading state
+        submitButton.disabled = true;
+        loadingSpinner.style.display = 'inline-block';
+        buttonText.textContent = 'Creating Account...';
+        
+        // Allow form submission to proceed
+        return true;
+    });
+    
+    // Real-time validation
+    document.getElementById('password').addEventListener('input', function() {
+        checkPasswordStrength(this.value);
+        validatePasswordMatch();
+    });
+    
+    document.getElementById('confirmPassword').addEventListener('input', function() {
+        validatePasswordMatch();
+    });
+    
+    function validatePasswordMatch() {
+        const password = document.getElementById('password').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+        
+        if (confirmPassword && password !== confirmPassword) {
+            document.getElementById('confirmPassword').setCustomValidity('Passwords do not match');
+        } else {
+            document.getElementById('confirmPassword').setCustomValidity('');
+        }
+    }
+    
+    // Username validation
+    document.getElementById('username').addEventListener('input', function() {
+        const value = this.value.trim();
+        if (value.length < 3) {
+            this.setCustomValidity('Username must be at least 3 characters long');
+        } else if (!/^[a-zA-Z0-9_]+$/.test(value)) {
+            this.setCustomValidity('Username can only contain letters, numbers, and underscores');
+        } else {
+            this.setCustomValidity('');
+        }
+    });
+    
+    // Loading spinner styles
+    const style = document.createElement('style');
+    style.textContent = `
+        .loading-spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #ffffff;
+            border-top: 2px solid transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 0.5rem;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .password-toggle {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #6c757d;
+            cursor: pointer;
+            z-index: 10;
+            font-size: 1.2rem;
+            transition: color 0.3s ease;
+        }
+        
+        .password-toggle:hover {
+            color: #11998e;
+        }
+    `;
+    document.head.appendChild(style);
+    
+    // Bio character counter
+    document.getElementById('bio').addEventListener('input', function() {
+        const bioCount = document.getElementById('bioCount');
+        const currentLength = this.value.length;
+        bioCount.textContent = currentLength;
+        
+        if (currentLength > 450) {
+            bioCount.style.color = '#ffc107';
+        } else if (currentLength > 500) {
+            bioCount.style.color = '#dc3545';
+        } else {
+            bioCount.style.color = '#6c757d';
+        }
+    });
+    
+    // Profile picture preview and validation
+    document.getElementById('profilePicture').addEventListener('change', function() {
+        const file = this.files[0];
+        if (file) {
+            // Check file size (5MB limit)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('Profile picture must be smaller than 5MB');
+                this.value = '';
+                return;
+            }
+            
+            // Check file type
+            const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+            if (!allowedTypes.includes(file.type)) {
+                alert('Please select a JPEG, PNG, or GIF image');
+                this.value = '';
+                return;
+            }
+        }
+    });
+    
+    // Website URL validation
+    document.getElementById('website').addEventListener('blur', function() {
+        const value = this.value.trim();
+        if (value && !value.startsWith('http://') && !value.startsWith('https://')) {
+            this.value = 'https://' + value;
+        }
+    });
+    
+    // Birth date validation
+    document.getElementById('birthDate').addEventListener('change', function() {
+        const selectedDate = new Date(this.value);
+        const today = new Date();
+        
+        if (selectedDate > today) {
+            alert('Birth date cannot be in the future');
+            this.value = '';
+        }
+    });
+</script>
+{% endblock %}

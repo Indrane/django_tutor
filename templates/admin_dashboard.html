@@ -1,0 +1,457 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Dashboard - BlogSphere{% endblock %}
+
+{% block extra_css %}
+<style>
+    .admin-header {
+        background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);
+        color: white;
+        padding: 2rem 0;
+        margin-bottom: 2rem;
+    }
+    
+    .admin-badge {
+        background: rgba(255,255,255,0.2);
+        padding: 0.25rem 0.75rem;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        margin-left: 0.5rem;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .stat-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        text-align: center;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        border-left: 4px solid;
+        transition: transform 0.3s ease;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-2px);
+    }
+    
+    .stat-card.users { border-left-color: #007bff; }
+    .stat-card.posts { border-left-color: #28a745; }
+    .stat-card.published { border-left-color: #17a2b8; }
+    .stat-card.drafts { border-left-color: #ffc107; }
+    .stat-card.authors { border-left-color: #6f42c1; }
+    .stat-card.admins { border-left-color: #dc3545; }
+    .stat-card.new-users { border-left-color: #20c997; }
+    .stat-card.new-posts { border-left-color: #fd7e14; }
+    
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+    }
+    
+    .stat-label {
+        color: #6c757d;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .admin-section {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    .section-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: #212529;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .recent-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #f8f9fa;
+    }
+    
+    .recent-item:last-child {
+        border-bottom: none;
+    }
+    
+    .item-info {
+        flex: 1;
+    }
+    
+    .item-title {
+        font-weight: 500;
+        margin-bottom: 0.25rem;
+    }
+    
+    .item-meta {
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+    
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+    
+    .status-active { background: #d4edda; color: #155724; }
+    .status-inactive { background: #f8d7da; color: #721c24; }
+    .status-published { background: #d1ecf1; color: #0c5460; }
+    .status-draft { background: #fff3cd; color: #856404; }
+    .status-admin { background: #f8d7da; color: #721c24; }
+    .status-author { background: #d4edda; color: #155724; }
+    
+    .quick-actions {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .action-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        text-align: center;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        transition: transform 0.3s ease;
+        text-decoration: none;
+        color: inherit;
+    }
+    
+    .action-card:hover {
+        transform: translateY(-2px);
+        text-decoration: none;
+        color: inherit;
+    }
+    
+    .action-icon {
+        font-size: 2rem;
+        margin-bottom: 1rem;
+        color: #007bff;
+    }
+    
+    .action-title {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+    
+    .action-desc {
+        font-size: 0.9rem;
+        color: #6c757d;
+    }
+    
+    .chart-container {
+        height: 300px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f8f9fa;
+        border-radius: 8px;
+        color: #6c757d;
+    }
+    
+    @media (max-width: 768px) {
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .quick-actions {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Admin Header -->
+<div class="admin-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="h2 mb-1">
+                    <i class="bi bi-shield-check me-2"></i>
+                    Admin Dashboard
+                    <span class="admin-badge">ADMINISTRATOR</span>
+                </h1>
+                <p class="mb-0 opacity-75">Welcome back, {{ current_user.get_full_name|default:current_user.username }}! Manage your blog platform.</p>
+            </div>
+            <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                <div class="dropdown">
+                    <button class="btn btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-gear-fill me-1"></i>Admin Tools
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="/posts/admin-users/">
+                            <i class="bi bi-people me-2"></i>Manage Users
+                        </a></li>
+                        <li><a class="dropdown-item" href="/posts/admin-posts/">
+                            <i class="bi bi-file-text me-2"></i>Manage Posts
+                        </a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="/posts/profile/">
+                            <i class="bi bi-person-gear me-2"></i>My Profile
+                        </a></li>
+                        <li><a class="dropdown-item" href="/posts/logout/">
+                            <i class="bi bi-box-arrow-right me-2"></i>Logout
+                        </a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <!-- Django Messages -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Statistics Overview -->
+    <div class="stats-grid">
+        <div class="stat-card users">
+            <div class="stat-number text-primary">{{ stats.total_users }}</div>
+            <div class="stat-label">Total Users</div>
+        </div>
+        <div class="stat-card posts">
+            <div class="stat-number text-success">{{ stats.total_posts }}</div>
+            <div class="stat-label">Total Posts</div>
+        </div>
+        <div class="stat-card published">
+            <div class="stat-number text-info">{{ stats.published_posts }}</div>
+            <div class="stat-label">Published Posts</div>
+        </div>
+        <div class="stat-card drafts">
+            <div class="stat-number text-warning">{{ stats.draft_posts }}</div>
+            <div class="stat-label">Draft Posts</div>
+        </div>
+        <div class="stat-card authors">
+            <div class="stat-number text-purple">{{ stats.total_authors }}</div>
+            <div class="stat-label">Authors</div>
+        </div>
+        <div class="stat-card admins">
+            <div class="stat-number text-danger">{{ stats.total_admins }}</div>
+            <div class="stat-label">Admins</div>
+        </div>
+        <div class="stat-card new-users">
+            <div class="stat-number text-teal">{{ stats.new_users_count }}</div>
+            <div class="stat-label">New Users (30d)</div>
+        </div>
+        <div class="stat-card new-posts">
+            <div class="stat-number text-orange">{{ stats.new_posts_count }}</div>
+            <div class="stat-label">New Posts (30d)</div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="quick-actions">
+        <a href="/posts/admin-users/" class="action-card">
+            <div class="action-icon">
+                <i class="bi bi-people-fill"></i>
+            </div>
+            <div class="action-title">Manage Users</div>
+            <div class="action-desc">View, edit, and manage user accounts</div>
+        </a>
+        
+        <a href="/posts/admin-posts/" class="action-card">
+            <div class="action-icon">
+                <i class="bi bi-file-text-fill"></i>
+            </div>
+            <div class="action-title">Manage Posts</div>
+            <div class="action-desc">Review, publish, and moderate posts</div>
+        </a>
+        
+        <a href="/posts/create/" class="action-card">
+            <div class="action-icon">
+                <i class="bi bi-plus-circle-fill"></i>
+            </div>
+            <div class="action-title">Create Post</div>
+            <div class="action-desc">Write and publish a new blog post</div>
+        </a>
+        
+        <a href="/posts/dashboard/" class="action-card">
+            <div class="action-icon">
+                <i class="bi bi-speedometer2"></i>
+            </div>
+            <div class="action-title">User Dashboard</div>
+            <div class="action-desc">Switch to regular user view</div>
+        </a>
+    </div>
+
+    <div class="row">
+        <!-- Recent Users -->
+        <div class="col-lg-6">
+            <div class="admin-section">
+                <h3 class="section-title">
+                    <i class="bi bi-person-plus-fill text-primary"></i>
+                    Recent Users
+                </h3>
+                
+                {% if recent_users %}
+                    {% for user in recent_users %}
+                        <div class="recent-item">
+                            <div class="item-info">
+                                <div class="item-title">{{ user.get_full_name|default:user.username }}</div>
+                                <div class="item-meta">
+                                    @{{ user.username }} • {{ user.email }} • 
+                                    <span class="status-badge status-{{ user.role }}">{{ user.get_role_display_name }}</span>
+                                </div>
+                            </div>
+                            <div>
+                                <span class="status-badge {% if user.is_active %}status-active{% else %}status-inactive{% endif %}">
+                                    {% if user.is_active %}Active{% else %}Inactive{% endif %}
+                                </span>
+                            </div>
+                        </div>
+                    {% endfor %}
+                    <div class="text-center mt-3">
+                        <a href="/posts/admin-users/" class="btn btn-outline-primary btn-sm">View All Users</a>
+                    </div>
+                {% else %}
+                    <p class="text-muted">No users found.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Recent Posts -->
+        <div class="col-lg-6">
+            <div class="admin-section">
+                <h3 class="section-title">
+                    <i class="bi bi-file-earmark-text-fill text-success"></i>
+                    Recent Posts
+                </h3>
+                
+                {% if recent_posts %}
+                    {% for post in recent_posts %}
+                        <div class="recent-item">
+                            <div class="item-info">
+                                <div class="item-title">{{ post.title|truncatechars:50 }}</div>
+                                <div class="item-meta">
+                                    by {{ post.author.get_full_name|default:post.author.username }} • 
+                                    {{ post.created_at|date:"M d, Y" }}
+                                </div>
+                            </div>
+                            <div>
+                                <span class="status-badge status-{{ post.status }}">{{ post.status|capfirst }}</span>
+                                {% if post.is_featured %}
+                                    <span class="status-badge" style="background: #fff3cd; color: #856404;">Featured</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                    <div class="text-center mt-3">
+                        <a href="/posts/admin-posts/" class="btn btn-outline-success btn-sm">View All Posts</a>
+                    </div>
+                {% else %}
+                    <p class="text-muted">No posts found.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Posts for Moderation -->
+        <div class="col-lg-6">
+            <div class="admin-section">
+                <h3 class="section-title">
+                    <i class="bi bi-eye-fill text-warning"></i>
+                    Posts Needing Review
+                </h3>
+                
+                {% if posts_for_moderation %}
+                    {% for post in posts_for_moderation %}
+                        <div class="recent-item">
+                            <div class="item-info">
+                                <div class="item-title">{{ post.title|truncatechars:40 }}</div>
+                                <div class="item-meta">
+                                    by {{ post.author.get_full_name|default:post.author.username }} • 
+                                    {{ post.created_at|date:"M d, Y" }}
+                                </div>
+                            </div>
+                            <div>
+                                <span class="status-badge status-draft">Draft</span>
+                            </div>
+                        </div>
+                    {% endfor %}
+                    <div class="text-center mt-3">
+                        <a href="/posts/admin-posts/" class="btn btn-outline-warning btn-sm">Review Posts</a>
+                    </div>
+                {% else %}
+                    <p class="text-muted">No posts need review.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Category Statistics -->
+        <div class="col-lg-6">
+            <div class="admin-section">
+                <h3 class="section-title">
+                    <i class="bi bi-tags-fill text-info"></i>
+                    Popular Categories
+                </h3>
+                
+                {% if category_stats %}
+                    {% for category in category_stats %}
+                        <div class="recent-item">
+                            <div class="item-info">
+                                <div class="item-title">{{ category.category|capfirst|default:"Uncategorized" }}</div>
+                            </div>
+                            <div>
+                                <span class="badge bg-secondary">{{ category.count }} posts</span>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted">No category data available.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-dismiss alerts after 5 seconds
+setTimeout(function() {
+    $('.alert').alert('close');
+}, 5000);
+
+// Add some interactive effects
+document.querySelectorAll('.stat-card').forEach(card => {
+    card.addEventListener('mouseenter', function() {
+        this.style.boxShadow = '0 8px 25px rgba(0,0,0,0.15)';
+    });
+    
+    card.addEventListener('mouseleave', function() {
+        this.style.boxShadow = '0 4px 20px rgba(0,0,0,0.1)';
+    });
+});
+</script>
+{% endblock %}
