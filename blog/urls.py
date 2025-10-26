@@ -1,31 +1,44 @@
 """
-URL configuration for blog project.
-
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/5.2/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
+URL configuration for blog project - DRF Backend API
 """
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
 from django.conf import settings
 from django.conf.urls.static import static
+from rest_framework import permissions
+from drf_yasg.views import get_schema_view
+from drf_yasg import openapi
 from . import views
 
+# Swagger/OpenAPI schema configuration
+schema_view = get_schema_view(
+    openapi.Info(
+        title="BlogSphere API",
+        default_version='v1',
+        description="A comprehensive blog API built with Django REST Framework",
+        terms_of_service="https://www.example.com/terms/",
+        contact=openapi.Contact(email="contact@blogsphere.com"),
+        license=openapi.License(name="MIT License"),
+    ),
+    public=True,
+    permission_classes=(permissions.AllowAny,),
+)
 
 urlpatterns = [
+    # Django Admin
     path('admin-django/', admin.site.urls),
+    
+    # API Documentation (Swagger UI)
+    path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
+    path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
+    re_path(r'^swagger(?P<format>\.json|\.yaml)$', schema_view.without_ui(cache_timeout=0), name='schema-json'),
+    
+    # Main API endpoints
+    path('api/', include('posts.urls')),
+    
+    # Root endpoints (for backward compatibility)
     path('', views.index, name='index'),
-    path('about-us/', views.about_us, name='about_us'),
-    path('posts/', include('posts.urls')),
+    path('about/', views.about_us, name='about_us'),
 ]
 
 # Serve media files during development

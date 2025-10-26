@@ -1,26 +1,28 @@
-from django.urls import path
+"""
+API URLs for Posts app - Pure DRF Backend
+"""
+
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 from . import views
 
+# Create router for ViewSets
+router = DefaultRouter()
+router.register(r'users', views.UserViewSet)
+router.register(r'posts', views.PostViewSet, basename='post')
+
 urlpatterns = [
-    # Authentication URLs
-    path('login/', views.login_view, name='login'),
-    path('signup/', views.signup_view, name='signup'),
-    path('logout/', views.logout_view, name='logout'),
+    # Authentication endpoints
+    path('auth/login/', views.login_api, name='login_api'),
+    path('auth/signup/', views.signup_api, name='signup_api'),
+    path('auth/logout/', views.logout_api, name='logout_api'),
+    path('auth/me/', views.current_user_api, name='current_user_api'),
+    path('auth/change-password/', views.change_password_api, name='change_password_api'),
     
-    # User Dashboard and Profile
-    path('dashboard/', views.dashboard_view, name='dashboard'),
-    path('profile/', views.profile_view, name='profile'),
+    # Dashboard and stats
+    path('dashboard/stats/', views.dashboard_stats_api, name='dashboard_stats_api'),
+    path('categories/', views.categories_api, name='categories_api'),
     
-    # Post CRUD Operations
-    path('create/', views.create_post, name='create_post'),
-    path('edit/<int:post_id>/', views.edit_post, name='edit_post'),
-    path('delete/<int:post_id>/', views.delete_post, name='delete_post'),
-    path('my-posts/', views.my_posts_view, name='my_posts'),
-    # path('view/<slug:slug>/', views.view_post, name='view_post'),
-    path('<slug:slug>/', views.view_post, name='post_detail'),  # Shorter URL for posts
-    
-    # Admin Dashboard URLs
-    path('admin-dashboard/', views.admin_dashboard_view, name='admin_dashboard'),
-    path('admin-users/', views.admin_users_view, name='admin_users'),
-    path('admin-posts/', views.admin_posts_view, name='admin_posts'),
+    # Router URLs (ViewSets)
+    path('', include(router.urls)),
 ]

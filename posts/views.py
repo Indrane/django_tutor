@@ -1,958 +1,576 @@
-from django.shortcuts import render, redirect
-from django.contrib import messages
-from django.db import transaction
-from django.core.exceptions import ValidationError
-from django.core.validators import validate_email
-from django.contrib.auth.hashers import make_password, check_password
-from django.core.paginator import Paginator
-from django.http import HttpResponseForbidden
-from django.db.models import Count, Sum
+"""
+Django REST Framework API Views for Blog Backend
+Pure DRF implementation - Backend only
+"""
+
+from rest_framework import viewsets, status, permissions
+from rest_framework.decorators import api_view, permission_classes, action
+from rest_framework.response import Response
+from rest_framework.authtoken.models import Token
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.pagination import PageNumberPagination
+from rest_framework import filters
+from django_filters.rest_framework import DjangoFilterBackend
+from django.contrib.auth.hashers import check_password
+from django.db.models import Q, Count, Sum
 from django.utils import timezone
 from django.utils.text import slugify
-from functools import wraps
+from django.shortcuts import get_object_or_404
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
+from django.contrib.auth.models import User
+
 from .models import Users, Post
-import re
+from .serializers import (
+    UserSerializer, UserCreateSerializer, UserUpdateSerializer,
+    PostSerializer, PostCreateSerializer, PostListSerializer,
+    LoginSerializer, PasswordChangeSerializer, DashboardStatsSerializer,
+    CategoryStatsSerializer
+)
+import logging
 
-# RBAC Helper Functions
-def get_current_user(request):
-    """Get current user from session"""
-    if 'user_id' not in request.session:
-        return None
+logger = logging.getLogger(__name__)
+
+
+class CustomPagination(PageNumberPagination):
+    """Custom pagination class"""
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
+# Helper function to get user from token
+def get_user_from_token(request):
+    """Get Users object from DRF token"""
     try:
-        return Users.objects.get(id=request.session['user_id'])
+        if hasattr(request, 'user') and request.user.is_authenticated:
+            # The Django user username should match our Users model username
+            user = Users.objects.get(username=request.user.username)
+            return user
     except Users.DoesNotExist:
-        return None
+        pass
+    return None
 
-def is_authenticated(request):
-    """Check if user is authenticated"""
-    return 'user_id' in request.session and get_current_user(request) is not None
 
-def require_login(view_func):
-    """Decorator to require user authentication"""
-    @wraps(view_func)
-    def wrapper(request, *args, **kwargs):
-        if not is_authenticated(request):
-            messages.error(request, "Please log in to access this page.")
-            return redirect('/posts/login/')
-        return view_func(request, *args, **kwargs)
-    return wrapper
-
-def require_admin(view_func):
-    """Decorator to require admin role"""
-    @wraps(view_func)
-    def wrapper(request, *args, **kwargs):
-        user = get_current_user(request)
-        if not user:
-            messages.error(request, "Please log in to access this page.")
-            return redirect('/posts/login/')
-        if not user.is_admin():
-            messages.error(request, "Access denied. Admin privileges required.")
-            return HttpResponseForbidden("Access denied. Admin privileges required.")
-        return view_func(request, *args, **kwargs)
-    return wrapper
-
-def require_author_or_admin(view_func):
-    """Decorator to require author or admin role"""
-    @wraps(view_func)
-    def wrapper(request, *args, **kwargs):
-        user = get_current_user(request)
-        if not user:
-            messages.error(request, "Please log in to access this page.")
-            return redirect('/posts/login/')
-        if not (user.is_admin() or user.is_author()):
-            messages.error(request, "Access denied. Author or Admin privileges required.")
-            return HttpResponseForbidden("Access denied.")
-        return view_func(request, *args, **kwargs)
-    return wrapper
-
-# Create your views here.
-@require_author_or_admin
-def create_post(request):
-    """View to create a new blog post."""
-    current_user = get_current_user(request)
+class IsOwnerOrAdminPermission(permissions.BasePermission):
+    """Custom permission to allow users to edit their own content or admins to edit anything"""
     
-    if request.method == 'POST':
-        # Extract form data
-        title = request.POST.get('title', '').strip()
-        content = request.POST.get('content', '').strip()
-        excerpt = request.POST.get('excerpt', '').strip()
-        category = request.POST.get('category', '')
-        tags = request.POST.get('tags', '').strip()
-        status = request.POST.get('status', 'draft')
-        is_featured = request.POST.get('is_featured') == 'on'
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        user = get_user_from_token(request)
+        return user is not None
+    
+    def has_object_permission(self, request, view, obj):
+        user = get_user_from_token(request)
+        if not user:
+            return False
         
-        # Handle featured image upload
-        featured_image = request.FILES.get('featured_image')
+        # Admin can do anything
+        if user.is_admin():
+            return True
         
-        # Validation
-        errors = []
-        if len(title) < 5:
-            errors.append("Title must be at least 5 characters long.")
-        if len(content) < 50:
-            errors.append("Content must be at least 50 characters long.")
-        if category and category not in dict(Post.CATEGORY_CHOICES):
-            errors.append("Invalid category selected.")
-        if status not in dict(Post.STATUS_CHOICES):
-            errors.append("Invalid status selected.")
+        # Object owner can edit their own content
+        if hasattr(obj, 'author'):
+            return obj.author_id == user.id
+        elif hasattr(obj, 'id'):  # For user objects
+            return obj.id == user.id
         
-        # Check if title already exists
-        if Post.objects.filter(title=title).exists():
-            errors.append("A post with this title already exists.")
-        
-        # Generate slug
-        slug = None
-        if not errors:
-            slug = slugify(title)
-            
-            # Ensure slug is unique
-            original_slug = slug
-            counter = 1
-            while Post.objects.filter(slug=slug).exists():
-                slug = f"{original_slug}-{counter}"
-                counter += 1
-        
-        if errors:
-            for error in errors:
-                messages.error(request, error)
-            context = {
-                'current_user': current_user,
-                'title': title,
-                'content': content,
-                'excerpt': excerpt,
-                'category': category,
-                'tags': tags,
-                'status': status,
-                'is_featured': is_featured,
+        return False
+
+
+class IsAdminPermission(permissions.BasePermission):
+    """Custom permission for admin-only access"""
+    
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        user = get_user_from_token(request)
+        return user and user.is_admin()
+
+
+class IsAuthenticatedCustom(permissions.BasePermission):
+    """Custom authentication check"""
+    
+    def has_permission(self, request, view):
+        # First check if user is authenticated via DRF
+        if not request.user or not request.user.is_authenticated:
+            return False
+        # Then check if we can find the corresponding Users object
+        user = get_user_from_token(request)
+        return user is not None
+
+
+# Authentication Views
+@swagger_auto_schema(
+    method='post',
+    request_body=LoginSerializer,
+    responses={
+        200: openapi.Response(
+            description="Login successful",
+            examples={
+                "application/json": {
+                    "success": True,
+                    "message": "Welcome back, Test!",
+                    "user": {"id": 1, "username": "testuser", "email": "test@example.com"},
+                    "token": "9944b09199c62bcf9418ad846dd0e4bbdfc6ee4b"
+                }
             }
-            return render(request, 'create_post.html', context)
-        
-        # Create post
-        try:
-            with transaction.atomic():
-                post = Post.objects.create(
-                    title=title,
-                    slug=slug,
-                    author=current_user,
-                    content=content,
-                    excerpt=excerpt,
-                    category=category,
-                    tags=tags,
-                    status=status,
-                    is_featured=is_featured and current_user.is_admin(),  # Only admins can feature posts
-                    featured_image=featured_image
-                )
-                
-                # Set published_at if status is published
-                if status == 'published':
-                    post.published_at = timezone.now()
-                    post.save()
-                
-                messages.success(request, f"Post '{title}' has been created successfully!")
-                
-                # Redirect based on user role
-                if current_user.is_admin():
-                    return redirect('/posts/admin-posts/')
-                else:
-                    return redirect('/posts/my-posts/')
-                    
-        except Exception as e:
-            messages.error(request, "An error occurred while creating the post.")
-            print(f"Post creation error: {e}")
-    
-    # GET request - show the create form
-    context = {
-        'current_user': current_user,
-        'categories': Post.CATEGORY_CHOICES,
-        'status_choices': Post.STATUS_CHOICES,
+        ),
+        400: openapi.Response(description="Bad request"),
+        401: openapi.Response(description="Invalid credentials")
     }
-    return render(request, 'create_post.html', context)
+)
 
-def login_view(request):
-    """View for user login with authentication."""
-    
-    if request.method == 'POST':
-        # Extract form data
-        username = request.POST.get('username', '').strip()
-        password = request.POST.get('password', '')
-        remember_me = request.POST.get('remember_me') == 'on'
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def login_api(request):
+    """Login API endpoint"""
+    serializer = LoginSerializer(data=request.data)
+    if serializer.is_valid():
+        username = serializer.validated_data['username']
+        password = serializer.validated_data['password']
         
-        # Basic validation
-        if not username or not password:
-            messages.error(request, "Please enter both username/email and password.")
-            return render(request, 'login.html')
-        
-        # Try to authenticate user
         try:
+            # Find user by username or email
             user = None
-            
-            # Try to find user by username first
             try:
                 user = Users.objects.get(username=username)
             except Users.DoesNotExist:
-                # If username not found, try email
                 if '@' in username:
                     try:
                         user = Users.objects.get(email=username)
                     except Users.DoesNotExist:
-                        user = None
+                        pass
             
-            # Check password if user found
-            if user and user.check_password(password):
-                if user.is_active:
-                    # Store user info in session (simple session-based auth)
-                    request.session['user_id'] = user.id
-                    request.session['username'] = user.username
-                    request.session['user_name'] = user.get_full_name()
-                    request.session['user_role'] = user.role  # Store user role for RBAC
-                    
-                    # Set session expiry based on remember me
-                    if not remember_me:
-                        request.session.set_expiry(0)  # Browser session only
-                    else:
-                        request.session.set_expiry(1209600)  # 2 weeks
-                    
-                    # Success message
-                    messages.success(request, f"Welcome back, {user.first_name or user.username}! You have been logged in successfully.")
-                    
-                    # Role-based redirect after successful login
-                    if user.is_admin():
-                        # Redirect admin to admin dashboard
-                        next_url = request.GET.get('next', '/posts/admin-dashboard/')
-                    else:
-                        # Redirect regular users (authors) to user dashboard
-                        next_url = request.GET.get('next', '/posts/dashboard/')
-                    
-                    return redirect(next_url)
-                else:
-                    messages.error(request, "Your account has been deactivated. Please contact support.")
+            if user and user.check_password(password) and user.is_active:
+                # Create or get Django User for token system
+                django_user, created = User.objects.get_or_create(
+                    username=user.username,
+                    defaults={
+                        'email': user.email,
+                        'first_name': user.first_name,
+                        'last_name': user.last_name
+                    }
+                )
+                
+                # Create token
+                token, created = Token.objects.get_or_create(user=django_user)
+                
+                return Response({
+                    'success': True,
+                    'message': f'Welcome back, {user.first_name or user.username}!',
+                    'user': UserSerializer(user).data,
+                    'token': token.key,
+                })
             else:
-                messages.error(request, "Invalid username/email or password. Please try again.")
+                return Response({
+                    'success': False,
+                    'message': 'Invalid credentials or account deactivated'
+                }, status=status.HTTP_401_UNAUTHORIZED)
                 
         except Exception as e:
-            messages.error(request, "An error occurred during login. Please try again.")
-            print(f"Login error: {e}")
+            logger.error(f"Login error: {e}")
+            return Response({
+                'success': False,
+                'message': 'Login failed'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
-    # GET request or failed POST - show the login form
-    return render(request, 'login.html')
+    return Response({
+        'success': False,
+        'errors': serializer.errors
+    }, status=status.HTTP_400_BAD_REQUEST)
 
-def signup_view(request):
-    """View for user signup with complete validation and database operations."""
-    print("the request is recieved",request)
-    if request.method == 'POST':
-        # Debug: Print all POST data
-        print("POST data:", dict(request.POST))
-        print("agree_terms value:", repr(request.POST.get('agree_terms')))
-        print("agree_terms in POST:", 'agree_terms' in request.POST)
-        
-        # Extract form data - Required fields
-        first_name = request.POST.get('first_name', '').strip()
-        last_name = request.POST.get('last_name', '').strip()
-        username = request.POST.get('username', '').strip()
-        email = request.POST.get('email', '').strip()
-        password = request.POST.get('password', '')
-        confirm_password = request.POST.get('confirm_password', '')
-        agree_terms = request.POST.get('agree_terms')
-        user_role = request.POST.get('role', 'author')  # Default to author role
-        
-        # Extract optional profile fields
-        bio = request.POST.get('bio', '').strip()
-        website = request.POST.get('website', '').strip()
-        location = request.POST.get('location', '').strip()
-        birth_date = request.POST.get('birth_date', '')
-        newsletter = request.POST.get('newsletter') == 'on'
-        
-        # Handle profile picture upload
-        profile_picture = request.FILES.get('profile_picture')
-        
-        # Validation errors list
-        errors = []
-        
-        # Step 1: Input validation for required fields
-        if not all([first_name, last_name, username, email, password, confirm_password]):
-            errors.append("All required fields must be filled.")
-        
-        if len(first_name) < 2:
-            errors.append("First name must be at least 2 characters long.")
-        
-        if len(last_name) < 2:
-            errors.append("Last name must be at least 2 characters long.")
-        
-        if len(username) < 3:
-            errors.append("Username must be at least 3 characters long.")
-        
-        # Username validation (letters, numbers, underscores only)
-        # indraneel_29
-        if not re.match(r'^[a-zA-Z0-9_]+$', username):
-            errors.append("Username can only contain letters, numbers, and underscores.")
-        
-        # Email validation
-        try:
-            validate_email(email)
-        except ValidationError:
-            errors.append("Please enter a valid email address.")
-        
-        # Password validation
-        if len(password) < 8:
-            errors.append("Password must be at least 8 characters long.")
-        
-        if not re.search(r'[A-Z]', password):
-            errors.append("Password must contain at least one uppercase letter.")
-        
-        if not re.search(r'[a-z]', password):
-            errors.append("Password must contain at least one lowercase letter.")
-        
-        if not re.search(r'\d', password):
-            errors.append("Password must contain at least one number.")
-        
-        if password != confirm_password:
-            errors.append("Passwords do not match.")
-        
-        # Check if terms checkbox is checked (can be "on", "1", or just present in POST)
-        if not agree_terms or agree_terms not in ['on', '1', 'true']:
-            errors.append("You must agree to the Terms of Service.")
-        
-        print(f"Terms validation - agree_terms: {repr(agree_terms)}, validation passed: {bool(agree_terms and agree_terms in ['on', '1', 'true'])}")
-        
-        # Validate optional fields
-        if website and not website.startswith(('http://', 'https://')):
-            website = 'https://' + website  # Auto-add protocol
-        
-        if bio and len(bio) > 500:
-            errors.append("Bio cannot exceed 500 characters.")
-        
-        if location and len(location) > 100:
-            errors.append("Location cannot exceed 100 characters.")
-        
-        # Validate birth date
-        birth_date_obj = None
-        if birth_date:
-            try:
-                from datetime import datetime
-                birth_date_obj = datetime.strptime(birth_date, '%Y-%m-%d').date()
-                # Check if birth date is not in the future
-                from datetime import date
-                if birth_date_obj > date.today():
-                    errors.append("Birth date cannot be in the future.")
-            except ValueError:
-                errors.append("Please enter a valid birth date in YYYY-MM-DD format.")
-        
-        # Validate profile picture
-        if profile_picture:
-            # Check file size (limit to 5MB)
-            if profile_picture.size > 5 * 1024 * 1024:
-                errors.append("Profile picture must be smaller than 5MB.")
-            
-            # Check file type
-            allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif']
-            if profile_picture.content_type not in allowed_types:
-                errors.append("Profile picture must be a JPEG, PNG, or GIF image.")
-        
-        # Step 2: Check if user already exists
-        if not errors:
-            try:
-                # Check if username already exists
-                if Users.objects.filter(username=username).exists():
-                    errors.append("Username already exists. Please choose a different one.")
-                
-                # Check if email already exists
-                if Users.objects.filter(email=email).exists():
-                    errors.append("An account with this email already exists.")
-                
-            except Exception as e:
-                errors.append("Database error occurred while checking existing users.")
-                print(f"Database check error: {e}")
-        
-        # If there are validation errors, show them
-        if errors:
-            for error in errors:
-                messages.error(request, error)
-            return render(request, 'signup.html')
-        
-        # Step 3: Create user with transaction (atomic operation)
-        try:
-            with transaction.atomic():
-                # Create the user with all fields
-                user = Users.objects.create(
-                    username=username,
-                    email=email,
-                    first_name=first_name,
-                    last_name=last_name,
-                    password=make_password(password),  # Hash the password
-                    role=user_role,  # Set user role
-                    bio=bio,
-                    website=website,
-                    location=location,
-                    birth_date=birth_date_obj,
-                    profile_picture=profile_picture,
-                    is_active=True,  # User can login immediately
-                    is_staff=False,
-                    newsletter_subscription=newsletter
-                )
-                
-                # Log the successful creation (optional)
-                print(f"User created successfully: {username} ({email})")
-                print(f"Profile info - Bio: {bool(bio)}, Website: {bool(website)}, Location: {location}")
-                
-                # Success message
-                messages.success(
-                    request, 
-                    f"🎉 Welcome to BlogSphere, {first_name}! Your account has been created successfully with your profile information. You can now log in and start your blogging journey!"
-                )
-                
-                # Redirect to login page after successful signup
-                return redirect('/posts/login/')
-                
-        except Exception as e:
-            # Transaction will automatically rollback on exception
-            error_message = "An error occurred while creating your account. Please try again."
-            messages.error(request, error_message)
-            print(f"User creation error: {e}")
-            return render(request, 'signup.html')
-    
-    # GET request - show the signup form
-    return render(request, 'signup.html')
 
-@require_login
-def dashboard_view(request):
-    """Dashboard view for authenticated users."""
-    current_user = get_current_user(request)
-    
-    # Get user's posts with statistics
-    if current_user.is_admin():
-        posts = Post.objects.all().order_by('-created_at')
-        total_posts = Post.objects.count()
-        published_posts = Post.objects.filter(status='published').count()
-        draft_posts = Post.objects.filter(status='draft').count()
-        archived_posts = Post.objects.filter(status='archived').count()
-        total_views = Post.objects.aggregate(total=Sum('views'))['total'] or 0
-    else:
-        posts = Post.objects.filter(author=current_user).order_by('-created_at')
-        total_posts = posts.count()
-        published_posts = posts.filter(status='published').count()
-        draft_posts = posts.filter(status='draft').count()
-        archived_posts = posts.filter(status='archived').count()
-        total_views = posts.aggregate(total=Sum('views'))['total'] or 0
-    
-    context = {
-        'current_user': current_user,
-        'posts': posts[:20],  # Show latest 20 posts
-        'total_posts': total_posts,
-        'published_posts': published_posts,
-        'draft_posts': draft_posts,
-        'archived_posts': archived_posts,
-        'total_views': total_views,
-    }
-    
-    # Use different template based on user role
-    if current_user.is_admin():
-        return render(request, 'admin_dashboard.html', context)
-    else:
-        return render(request, 'author_dashboard.html', context)
-
-@require_login
-def profile_view(request):
-    """User profile view with editable information"""
-    current_user = get_current_user(request)
-    
-    if request.method == 'POST':
-        # Handle profile update
-        first_name = request.POST.get('first_name', '').strip()
-        last_name = request.POST.get('last_name', '').strip()
-        bio = request.POST.get('bio', '').strip()
-        website = request.POST.get('website', '').strip()
-        location = request.POST.get('location', '').strip()
-        birth_date = request.POST.get('birth_date', '')
-        
-        # Validation
-        errors = []
-        if len(first_name) < 2:
-            errors.append("First name must be at least 2 characters long.")
-        if len(last_name) < 2:
-            errors.append("Last name must be at least 2 characters long.")
-        if bio and len(bio) > 500:
-            errors.append("Bio cannot exceed 500 characters.")
-        if website and not website.startswith(('http://', 'https://')):
-            website = 'https://' + website
-        
-        # Validate birth date
-        birth_date_obj = None
-        if birth_date:
-            try:
-                from datetime import datetime, date
-                birth_date_obj = datetime.strptime(birth_date, '%Y-%m-%d').date()
-                if birth_date_obj > date.today():
-                    errors.append("Birth date cannot be in the future.")
-            except ValueError:
-                errors.append("Please enter a valid birth date.")
-        
-        if errors:
-            for error in errors:
-                messages.error(request, error)
-        else:
-            # Update profile
-            try:
-                current_user.first_name = first_name
-                current_user.last_name = last_name
-                current_user.bio = bio
-                current_user.website = website
-                current_user.location = location
-                current_user.birth_date = birth_date_obj
-                
-                # Handle profile picture upload
-                if 'profile_picture' in request.FILES:
-                    current_user.profile_picture = request.FILES['profile_picture']
-                
-                current_user.save()
-                
-                # Update session data
-                request.session['user_name'] = current_user.get_full_name()
-                
-                messages.success(request, "Your profile has been updated successfully!")
-            except Exception as e:
-                messages.error(request, "An error occurred updating your profile.")
-                print(f"Profile update error: {e}")
-    
-    # Get user's posts stats
-    user_posts_count = Post.objects.filter(author=current_user).count()
-    user_published_posts = Post.objects.filter(author=current_user, status='published').count()
-    user_draft_posts = Post.objects.filter(author=current_user, status='draft').count()
-    
-    context = {
-        'current_user': current_user,
-        'user_posts_count': user_posts_count,
-        'user_published_posts': user_published_posts,
-        'user_draft_posts': user_draft_posts,
-    }
-    
-    return render(request, 'profile.html', context)
-
-def logout_view(request):
-    """Logout view to clear session and redirect"""
-    # Clear all session data
-    request.session.flush()
-    
-    # Success message
-    messages.success(request, "You have been logged out successfully. Come back soon!")
-    
-    # Redirect to home page
-    return redirect('/')
-
-@require_admin
-def admin_dashboard_view(request):
-    """Admin dashboard with user and post management"""
-    current_user = get_current_user(request)
-    
-    # Get overall statistics
-    total_users = Users.objects.count()
-    total_posts = Post.objects.count()
-    published_posts = Post.objects.filter(status='published').count()
-    draft_posts = Post.objects.filter(status='draft').count()
-    total_authors = Users.objects.filter(role='author').count()
-    total_admins = Users.objects.filter(role='admin').count()
-    
-    # Get recent users (last 10)
-    recent_users = Users.objects.order_by('-created_at')[:10]
-    
-    # Get recent posts (last 10)
-    recent_posts = Post.objects.order_by('-created_at')[:10]
-    
-    # Get posts needing moderation (drafts or recent posts)
-    posts_for_moderation = Post.objects.filter(status='draft').order_by('-created_at')[:5]
-    
-    # Get category statistics
-    category_stats = Post.objects.values('category').annotate(
-        count=Count('category')
-    ).order_by('-count')[:10]
-    
-    # Get user activity (users created in last 30 days)
-    from datetime import datetime, timedelta
-    thirty_days_ago = datetime.now() - timedelta(days=30)
-    new_users_count = Users.objects.filter(created_at__gte=thirty_days_ago).count()
-    new_posts_count = Post.objects.filter(created_at__gte=thirty_days_ago).count()
-    
-    context = {
-        'current_user': current_user,
-        'stats': {
-            'total_users': total_users,
-            'total_posts': total_posts,
-            'published_posts': published_posts,
-            'draft_posts': draft_posts,
-            'total_authors': total_authors,
-            'total_admins': total_admins,
-            'new_users_count': new_users_count,
-            'new_posts_count': new_posts_count,
-        },
-        'recent_users': recent_users,
-        'recent_posts': recent_posts,
-        'posts_for_moderation': posts_for_moderation,
-        'category_stats': category_stats,
-    }
-    
-    return render(request, 'admin_dashboard.html', context)
-
-@require_admin
-def admin_users_view(request):
-    """Admin view to manage all users"""
-    current_user = get_current_user(request)
-    
-    # Handle user actions
-    if request.method == 'POST':
-        action = request.POST.get('action')
-        user_id = request.POST.get('user_id')
-        
-        if action and user_id:
-            try:
-                target_user = Users.objects.get(id=user_id)
-                
-                if action == 'activate':
-                    target_user.is_active = True
-                    target_user.save()
-                    messages.success(request, f"User {target_user.username} has been activated.")
-                
-                elif action == 'deactivate':
-                    if target_user.id != current_user.id:  # Prevent self-deactivation
-                        target_user.is_active = False
-                        target_user.save()
-                        messages.success(request, f"User {target_user.username} has been deactivated.")
-                    else:
-                        messages.error(request, "You cannot deactivate your own account.")
-                
-                elif action == 'make_admin':
-                    target_user.role = 'admin'
-                    target_user.save()
-                    messages.success(request, f"User {target_user.username} is now an admin.")
-                
-                elif action == 'make_author':
-                    if target_user.id != current_user.id:  # Prevent self-demotion
-                        target_user.role = 'author'
-                        target_user.save()
-                        messages.success(request, f"User {target_user.username} is now an author.")
-                    else:
-                        messages.error(request, "You cannot change your own role.")
-                
-            except Users.DoesNotExist:
-                messages.error(request, "User not found.")
-    
-    # Get all users with pagination
-    users = Users.objects.order_by('-created_at')
-    paginator = Paginator(users, 20)  # 20 users per page
-    page_number = request.GET.get('page')
-    page_users = paginator.get_page(page_number)
-    
-    context = {
-        'current_user': current_user,
-        'users': page_users,
-    }
-    
-    return render(request, 'admin_users.html', context)
-
-@require_admin
-def admin_posts_view(request):
-    """Admin view to manage all posts"""
-    current_user = get_current_user(request)
-    
-    # Handle post actions
-    if request.method == 'POST':
-        action = request.POST.get('action')
-        post_id = request.POST.get('post_id')
-        
-        if action and post_id:
-            try:
-                post = Post.objects.get(id=post_id)
-                
-                if action == 'publish':
-                    post.status = 'published'
-                    if not post.published_at:
-                        post.published_at = timezone.now()
-                    post.save()
-                    messages.success(request, f"Post '{post.title}' has been published.")
-                
-                elif action == 'unpublish':
-                    post.status = 'draft'
-                    post.save()
-                    messages.success(request, f"Post '{post.title}' has been unpublished.")
-                
-                elif action == 'feature':
-                    post.is_featured = True
-                    post.save()
-                    messages.success(request, f"Post '{post.title}' is now featured.")
-                
-                elif action == 'unfeature':
-                    post.is_featured = False
-                    post.save()
-                    messages.success(request, f"Post '{post.title}' is no longer featured.")
-                
-                elif action == 'delete':
-                    post_title = post.title
-                    post.delete()
-                    messages.success(request, f"Post '{post_title}' has been deleted.")
-                
-            except Post.DoesNotExist:
-                messages.error(request, "Post not found.")
-    
-    # Get all posts with pagination
-    posts = Post.objects.order_by('-created_at')
-    paginator = Paginator(posts, 15)  # 15 posts per page
-    page_number = request.GET.get('page')
-    page_posts = paginator.get_page(page_number)
-    
-    context = {
-        'current_user': current_user,
-        'posts': page_posts,
-    }
-    
-    return render(request, 'admin_posts.html', context)
-
-@require_author_or_admin
-def edit_post(request, post_id):
-    """Edit an existing post with RBAC"""
-    current_user = get_current_user(request)
-    
-    try:
-        post = Post.objects.get(id=post_id)
-        
-        # RBAC: Check if user can edit this post
-        if not post.can_be_edited_by(current_user):
-            messages.error(request, "You don't have permission to edit this post.")
-            return HttpResponseForbidden("Access denied.")
-        
-        if request.method == 'POST':
-            # Extract form data
-            title = request.POST.get('title', '').strip()
-            content = request.POST.get('content', '').strip()
-            excerpt = request.POST.get('excerpt', '').strip()
-            category = request.POST.get('category', '')
-            tags = request.POST.get('tags', '').strip()
-            status = request.POST.get('status', 'draft')
-            is_featured = request.POST.get('is_featured') == 'on'
-            
-            # Handle featured image upload
-            featured_image = request.FILES.get('featured_image')
-            
-            # Validation
-            errors = []
-            if len(title) < 5:
-                errors.append("Title must be at least 5 characters long.")
-            if len(content) < 50:
-                errors.append("Content must be at least 50 characters long.")
-            if category and category not in dict(Post.CATEGORY_CHOICES):
-                errors.append("Invalid category selected.")
-            if status not in dict(Post.STATUS_CHOICES):
-                errors.append("Invalid status selected.")
-            
-            # Check if title already exists (excluding current post)
-            if Post.objects.filter(title=title).exclude(id=post.id).exists():
-                errors.append("A post with this title already exists.")
-            
-            # Generate new slug if title changed
-            slug = post.slug
-            if post.title != title:
-                slug = slugify(title)
-                original_slug = slug
-                counter = 1
-                while Post.objects.filter(slug=slug).exclude(id=post.id).exists():
-                    slug = f"{original_slug}-{counter}"
-                    counter += 1
-            
-            if errors:
-                for error in errors:
-                    messages.error(request, error)
-                context = {
-                    'current_user': current_user,
-                    'post': post,
-                    'categories': Post.CATEGORY_CHOICES,
-                    'status_choices': Post.STATUS_CHOICES,
+@swagger_auto_schema(
+    method='post',
+    request_body=UserCreateSerializer,
+    responses={
+        201: openapi.Response(
+            description="User created successfully",
+            examples={
+                "application/json": {
+                    "success": True,
+                    "message": "Welcome to BlogSphere, Test! Your account has been created successfully.",
+                    "user": {"id": 1, "username": "testuser", "email": "test@example.com", "role": "author"}
                 }
-                return render(request, 'edit_post.html', context)
-            
-            # Update post
-            try:
-                with transaction.atomic():
-                    post.title = title
-                    post.slug = slug
-                    post.content = content
-                    post.excerpt = excerpt
-                    post.category = category
-                    post.tags = tags
-                    post.status = status
-                    
-                    # Only admins can change featured status
-                    if current_user.is_admin():
-                        post.is_featured = is_featured
-                    
-                    # Handle featured image
-                    if featured_image:
-                        post.featured_image = featured_image
-                    
-                    # Set published_at if status changed to published
-                    if status == 'published' and not post.published_at:
-                        post.published_at = timezone.now()
-                    elif status != 'published':
-                        post.published_at = None
-                    
-                    post.save()
-                    
-                    messages.success(request, f"Post '{title}' has been updated successfully!")
-                    
-                    # Redirect based on user role
-                    if current_user.is_admin():
-                        return redirect('/posts/admin-posts/')
-                    else:
-                        return redirect('/posts/my-posts/')
-                        
-            except Exception as e:
-                messages.error(request, "An error occurred while updating the post.")
-                print(f"Post update error: {e}")
-        
-        # GET request - show the edit form
-        context = {
-            'current_user': current_user,
-            'post': post,
-            'categories': Post.CATEGORY_CHOICES,
-            'status_choices': Post.STATUS_CHOICES,
-        }
-        return render(request, 'edit_post.html', context)
-        
-    except Post.DoesNotExist:
-        messages.error(request, "Post not found.")
-        return redirect('/posts/dashboard/')
-
-@require_author_or_admin
-def delete_post(request, post_id):
-    """Delete a post with RBAC"""
-    current_user = get_current_user(request)
-    
-    try:
-        post = Post.objects.get(id=post_id)
-        
-        # RBAC: Check if user can delete this post
-        if not post.can_be_deleted_by(current_user):
-            messages.error(request, "You don't have permission to delete this post.")
-            return HttpResponseForbidden("Access denied.")
-        
-        post_title = post.title
-        post.delete()
-        
-        messages.success(request, f"Post '{post_title}' has been deleted successfully!")
-        
-        # Redirect based on user role
-        if current_user.is_admin():
-            return redirect('/posts/admin-posts/')
-        else:
-            return redirect('/posts/my-posts/')
-            
-    except Post.DoesNotExist:
-        messages.error(request, "Post not found.")
-        return redirect('/posts/dashboard/')
-
-@require_author_or_admin
-def my_posts_view(request):
-    """View for authors to manage their own posts"""
-    current_user = get_current_user(request)
-    
-    # Get user's posts
-    posts = Post.objects.filter(author=current_user).order_by('-created_at')
-    
-    # Handle post actions (for authors managing their own posts)
-    if request.method == 'POST':
-        action = request.POST.get('action')
-        post_id = request.POST.get('post_id')
-        
-        if action and post_id:
-            try:
-                post = Post.objects.get(id=post_id, author=current_user)  # Ensure ownership
-                
-                if action == 'publish':
-                    post.status = 'published'
-                    if not post.published_at:
-                        post.published_at = timezone.now()
-                    post.save()
-                    messages.success(request, f"Post '{post.title}' has been published.")
-                
-                elif action == 'unpublish':
-                    post.status = 'draft'
-                    post.save()
-                    messages.success(request, f"Post '{post.title}' has been unpublished.")
-                
-                elif action == 'delete':
-                    post_title = post.title
-                    post.delete()
-                    messages.success(request, f"Post '{post_title}' has been deleted.")
-                
-            except Post.DoesNotExist:
-                messages.error(request, "Post not found or you don't have permission to modify it.")
-    
-    # Get statistics
-    total_posts = posts.count()
-    published_posts = posts.filter(status='published').count()
-    draft_posts = posts.filter(status='draft').count()
-    
-    # Pagination
-    paginator = Paginator(posts, 10)  # 10 posts per page
-    page_number = request.GET.get('page')
-    page_posts = paginator.get_page(page_number)
-    
-    context = {
-        'current_user': current_user,
-        'posts': page_posts,
-        'stats': {
-            'total_posts': total_posts,
-            'published_posts': published_posts,
-            'draft_posts': draft_posts,
-        }
+            }
+        ),
+        400: openapi.Response(description="Validation errors")
     }
+)
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def signup_api(request):
+    """Signup API endpoint"""
+    serializer = UserCreateSerializer(data=request.data)
+    if serializer.is_valid():
+        try:
+            user = serializer.save()
+            return Response({
+                'success': True,
+                'message': f'Welcome to BlogSphere, {user.first_name}! Your account has been created successfully.',
+                'user': UserSerializer(user).data
+            }, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            logger.error(f"User creation error: {e}")
+            return Response({
+                'success': False,
+                'message': 'Account creation failed'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
-    return render(request, 'my_posts.html', context)
+    return Response({
+        'success': False,
+        'errors': serializer.errors
+    }, status=status.HTTP_400_BAD_REQUEST)
 
-@require_login
-def view_post(request, slug):
-    """View a single post with RBAC and enhanced features"""
-    current_user = get_current_user(request)
-    
+
+@swagger_auto_schema(
+    method='post',
+    responses={
+        200: openapi.Response(description="Logout successful"),
+        401: openapi.Response(description="Authentication required")
+    }
+)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def logout_api(request):
+    """Logout API endpoint"""
     try:
-        post = Post.objects.get(slug=slug)
+        request.user.auth_token.delete()
+        return Response({
+            'success': True,
+            'message': 'Successfully logged out'
+        })
+    except Exception as e:
+        return Response({
+            'success': False,
+            'message': 'Logout failed'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@swagger_auto_schema(
+    method='get',
+    responses={
+        200: openapi.Response(description="Current user information"),
+        401: openapi.Response(description="Authentication required"),
+        404: openapi.Response(description="User not found")
+    }
+)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def current_user_api(request):
+    """Get current user information"""
+    user = get_user_from_token(request)
+    if user:
+        return Response({
+            'success': True,
+            'user': UserSerializer(user).data
+        })
+    return Response({
+        'success': False,
+        'message': 'User not found'
+    }, status=status.HTTP_404_NOT_FOUND)
+
+
+# User ViewSet
+class UserViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing users (Admin only)"""
+    queryset = Users.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [IsAdminPermission]
+    pagination_class = CustomPagination
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['role', 'is_active']
+    search_fields = ['username', 'email', 'first_name', 'last_name']
+    ordering_fields = ['created_at', 'username', 'email']
+    ordering = ['-created_at']
+    
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return UserCreateSerializer
+        elif self.action in ['update', 'partial_update']:
+            return UserUpdateSerializer
+        return UserSerializer
+    
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        """Get user statistics"""
+        return Response({
+            'total_users': Users.objects.count(),
+            'active_users': Users.objects.filter(is_active=True).count(),
+            'authors': Users.objects.filter(role='author').count(),
+            'admins': Users.objects.filter(role='admin').count()
+        })
+
+
+# Post ViewSet
+class PostViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing posts"""
+    serializer_class = PostSerializer
+    permission_classes = [IsAuthenticatedCustom]
+    pagination_class = CustomPagination
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['status', 'category', 'is_featured', 'author']
+    search_fields = ['title', 'content', 'excerpt', 'tags']
+    ordering_fields = ['created_at', 'updated_at', 'published_at', 'views', 'title']
+    ordering = ['-created_at']
+    
+    def get_queryset(self):
+        """Return queryset based on user role"""
+        user = get_user_from_token(self.request)
+        if not user:
+            return Post.objects.none()
         
-        # RBAC: Check if user can view this post
-        if not post.can_be_viewed_by(current_user):
-            messages.error(request, "You don't have permission to view this post.")
-            return HttpResponseForbidden("Access denied.")
+        if user.is_admin():
+            return Post.objects.all()
+        else:
+            return Post.objects.filter(author=user)
+    
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return PostListSerializer
+        elif self.action in ['create', 'update', 'partial_update']:
+            return PostCreateSerializer
+        return PostSerializer
+    
+    def perform_create(self, serializer):
+        """Set author to current user when creating post"""
+        user = get_user_from_token(self.request)
+        if not user:
+            raise permissions.PermissionDenied("Authentication required")
         
-        # Increment views count (only for published posts)
+        # Generate unique slug
+        title = serializer.validated_data['title']
+        base_slug = slugify(title)
+        slug = base_slug
+        counter = 1
+        
+        while Post.objects.filter(slug=slug).exists():
+            slug = f"{base_slug}-{counter}"
+            counter += 1
+        
+        serializer.save(author=user, slug=slug)
+    
+    def get_permissions(self):
+        """Set permissions based on action"""
+        if self.action in ['update', 'partial_update', 'destroy']:
+            permission_classes = [IsOwnerOrAdminPermission]
+        else:
+            permission_classes = [IsAuthenticatedCustom]
+        
+        return [permission() for permission in permission_classes]
+    
+    @action(detail=True, methods=['post'])
+    def publish(self, request, pk=None):
+        """Publish a post"""
+        post = self.get_object()
+        post.status = 'published'
+        if not post.published_at:
+            post.published_at = timezone.now()
+        post.save()
+        return Response({'message': f'Post "{post.title}" published successfully'})
+    
+    @action(detail=True, methods=['post'])
+    def unpublish(self, request, pk=None):
+        """Unpublish a post"""
+        post = self.get_object()
+        post.status = 'draft'
+        post.save()
+        return Response({'message': f'Post "{post.title}" unpublished'})
+    
+    @action(detail=True, methods=['post'])
+    def archive(self, request, pk=None):
+        """Archive a post"""
+        post = self.get_object()
+        post.status = 'archived'
+        post.save()
+        return Response({'message': f'Post "{post.title}" archived'})
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminPermission])
+    def feature(self, request, pk=None):
+        """Feature/unfeature a post (admin only)"""
+        post = self.get_object()
+        post.is_featured = not post.is_featured
+        post.save()
+        action = 'featured' if post.is_featured else 'unfeatured'
+        return Response({'message': f'Post "{post.title}" {action}'})
+    
+    @action(detail=False, methods=['get'])
+    def my_posts(self, request):
+        """Get current user's posts with statistics"""
+        user = get_user_from_token(request)
+        if not user:
+            return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        posts = Post.objects.filter(author=user)
+        stats = {
+            'total': posts.count(),
+            'published': posts.filter(status='published').count(),
+            'draft': posts.filter(status='draft').count(),
+            'archived': posts.filter(status='archived').count(),
+            'total_views': posts.aggregate(Sum('views'))['views__sum'] or 0
+        }
+        
+        # Apply status filter if requested
+        status_filter = request.query_params.get('status')
+        if status_filter:
+            posts = posts.filter(status=status_filter)
+        
+        page = self.paginate_queryset(posts.order_by('-created_at'))
+        if page is not None:
+            serializer = PostListSerializer(page, many=True)
+            result = self.get_paginated_response(serializer.data)
+            result.data['stats'] = stats
+            return result
+        
+        serializer = PostListSerializer(posts.order_by('-created_at'), many=True)
+        return Response({
+            'results': serializer.data,
+            'stats': stats
+        })
+    
+    @action(detail=False, methods=['get'], permission_classes=[AllowAny])
+    def published(self, request):
+        """Get all published posts (public endpoint)"""
+        posts = Post.objects.filter(status='published').order_by('-published_at')
+        
+        # Apply filters
+        category = request.query_params.get('category')
+        if category and category != 'all':
+            posts = posts.filter(category__iexact=category)
+        
+        search = request.query_params.get('search')
+        if search:
+            posts = posts.filter(
+                Q(title__icontains=search) |
+                Q(content__icontains=search) |
+                Q(excerpt__icontains=search)
+            )
+        
+        page = self.paginate_queryset(posts)
+        if page is not None:
+            serializer = PostListSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = PostListSerializer(posts, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['get'], permission_classes=[AllowAny])
+    def view(self, request, pk=None):
+        """View a post (increments view count for published posts)"""
+        post = self.get_object()
+        
         if post.status == 'published':
             post.views = (post.views or 0) + 1
             post.save(update_fields=['views'])
         
-        # Get previous and next posts for navigation
-        prev_post = None
-        next_post = None
+        # Get related posts
+        related_posts = Post.objects.filter(
+            status='published',
+            category=post.category
+        ).exclude(id=post.id).order_by('-views')[:4]
         
-        if post.status == 'published':
-            # Get previous post (older)
-            prev_post = Post.objects.filter(
-                status='published',
-                published_at__lt=post.published_at
-            ).order_by('-published_at').first()
-            
-            # Get next post (newer)
-            next_post = Post.objects.filter(
-                status='published',
-                published_at__gt=post.published_at
-            ).order_by('published_at').first()
-        
-        # Check if user can edit this post
-        user_can_edit = post.can_be_edited_by(current_user)
-        
-        context = {
-            'current_user': current_user,
-            'post': post,
-            'prev_post': prev_post,
-            'next_post': next_post,
-            'user_can_edit': user_can_edit,
-            'reading_time': post.reading_time,
+        return Response({
+            'post': PostSerializer(post).data,
+            'related_posts': PostListSerializer(related_posts, many=True).data
+        })
+
+
+# Stats and Categories
+@swagger_auto_schema(
+    method='get',
+    responses={
+        200: openapi.Response(description="Dashboard statistics"),
+        401: openapi.Response(description="Authentication required")
+    }
+)
+@api_view(['GET'])
+@permission_classes([IsAuthenticatedCustom])
+def dashboard_stats_api(request):
+    """Get dashboard statistics"""
+    user = get_user_from_token(request)
+    if not user:
+        return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
+    
+    if user.is_admin():
+        posts = Post.objects.all()
+        stats = {
+            'total_posts': Post.objects.count(),
+            'published_posts': Post.objects.filter(status='published').count(),
+            'draft_posts': Post.objects.filter(status='draft').count(),
+            'archived_posts': Post.objects.filter(status='archived').count(),
+            'total_views': Post.objects.aggregate(Sum('views'))['views__sum'] or 0,
+            'total_users': Users.objects.count(),
+            'total_authors': Users.objects.filter(role='author').count(),
+            'total_admins': Users.objects.filter(role='admin').count(),
         }
+        recent_posts = Post.objects.order_by('-created_at')[:10]
+    else:
+        posts = Post.objects.filter(author=user)
+        stats = {
+            'total_posts': posts.count(),
+            'published_posts': posts.filter(status='published').count(),
+            'draft_posts': posts.filter(status='draft').count(),
+            'archived_posts': posts.filter(status='archived').count(),
+            'total_views': posts.aggregate(Sum('views'))['views__sum'] or 0,
+        }
+        recent_posts = posts.order_by('-created_at')[:10]
+    
+    stats['recent_posts'] = PostListSerializer(recent_posts, many=True).data
+    return Response(stats)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def categories_api(request):
+    """Get all categories with post counts"""
+    categories = Post.objects.filter(status='published').values('category').annotate(
+        count=Count('category')
+    ).order_by('-count')
+    
+    return Response([
+        {'category': cat['category'], 'count': cat['count']} 
+        for cat in categories if cat['category']
+    ])
+
+    
+@swagger_auto_schema(
+    method='post',
+    request_body=PasswordChangeSerializer,
+    responses={
+        200: openapi.Response(description="Password changed successfully"),
+        400: openapi.Response(description="Invalid current password or validation errors"),
+        401: openapi.Response(description="Authentication required")
+    }
+)
+@api_view(['POST'])
+@permission_classes([IsAuthenticatedCustom])
+def change_password_api(request):
+    """Change password API endpoint"""
+    user = get_user_from_token(request)
+    if not user:
+        return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
+    
+    serializer = PasswordChangeSerializer(data=request.data)
+    if serializer.is_valid():
+        current_password = serializer.validated_data['current_password']
+        new_password = serializer.validated_data['new_password']
         
-        return render(request, 'view_post.html', context)
-        
-    except Post.DoesNotExist:
-        messages.error(request, "Post not found.")
-        return redirect('/posts/dashboard/')
+        if user.check_password(current_password):
+            user.set_password(new_password)
+            user.save()
+            return Response({
+                'success': True,
+                'message': 'Password changed successfully'
+            })
+        else:
+            return Response({
+                'success': False,
+                'message': 'Current password is incorrect'
+            }, status=status.HTTP_400_BAD_REQUEST)
+    
+    return Response({
+        'success': False,
+        'errors': serializer.errors
+    }, status=status.HTTP_400_BAD_REQUEST)

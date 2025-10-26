@@ -1,19 +1,20 @@
-from django.http import HttpResponse
-from django.shortcuts import render
+"""
+Main blog views - converted to API responses
+"""
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
 from posts.models import Post
+from posts.serializers import PostListSerializer
 from django.db.models import Q
 
 
-# def hello_world(request):
-#     """A simple Hello World view using HttpResponse."""
-#     return HttpResponse("<strong>Hello, World!</strong>")
-
-# def welcome(request):
-#     """A simple Welcome view using HttpResponse."""
-#     return HttpResponse("<h1>Welcome to the Blog!</h1>")
-
+@api_view(['GET'])
+@permission_classes([AllowAny])
 def index(request):
-    """Main blog homepage with category filtering and all posts."""
+    """
+    Main blog homepage API - returns published posts with filtering
+    """
     # Get filter parameters
     category_filter = request.GET.get('category', 'all')
     search_query = request.GET.get('search', '')
@@ -45,26 +46,71 @@ def index(request):
     elif sort_by == 'title':
         posts = posts.order_by('title')
     
-    # Get all unique categories for the filter sidebar
+    # Get all unique categories for the filter
     all_categories = Post.objects.filter(status='published').values_list('category', flat=True).distinct()
     categories = [cat for cat in all_categories if cat]  # Remove empty categories
     
     # Get featured posts (most viewed)
     featured_posts = Post.objects.filter(status='published').order_by('-views')[:3]
     
-    context = {
-        'posts': posts,
-        'categories': sorted(categories),
-        'featured_posts': featured_posts,
-        'current_category': category_filter,
-        'search_query': search_query,
-        'sort_by': sort_by,
-        'total_posts': posts.count(),
-        'name': 'Indraneel'  # Keep original context
-    }
+    # Pagination (limit to 20 posts)
+    posts = posts[:20]
     
-    return render(request, 'homepage.html', context)
+    return Response({
+        'success': True,
+        'message': 'Welcome to BlogSphere API',
+        'data': {
+            'posts': PostListSerializer(posts, many=True).data,
+            'categories': sorted(categories),
+            'featured_posts': PostListSerializer(featured_posts, many=True).data,
+            'filters': {
+                'current_category': category_filter,
+                'search_query': search_query,
+                'sort_by': sort_by,
+            },
+            'stats': {
+                'total_posts': posts.count(),
+                'total_categories': len(categories),
+            }
+        }
+    })
 
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
 def about_us(request):
-    return render(request,'about.html')
+    """
+    About us API endpoint
+    """
+    return Response({
+        'success': True,
+        'message': 'BlogSphere - Your Digital Story Platform',
+        'about': {
+            'title': 'About BlogSphere',
+            'description': 'BlogSphere is a modern, feature-rich blogging platform built with Django REST Framework. It provides a powerful API for creating, managing, and sharing stories with the world.',
+            'features': [
+                'RESTful API Architecture',
+                'Role-based Access Control (RBAC)',
+                'Token-based Authentication',
+                'Rich Content Management',
+                'Advanced Search & Filtering',
+                'Real-time Statistics',
+                'Responsive Design Support',
+                'Comprehensive Admin Panel'
+            ],
+            'version': '1.0.0',
+            'built_with': [
+                'Django 5.2.4',
+                'Django REST Framework 3.16.1',
+                'drf-yasg (Swagger UI)',
+                'PostgreSQL/SQLite',
+                'Bootstrap 5.3'
+            ],
+            'api_documentation': {
+                'swagger_ui': '/swagger/',
+                'redoc': '/redoc/',
+                'json_schema': '/swagger.json'
+            }
+        }
+    })
 
